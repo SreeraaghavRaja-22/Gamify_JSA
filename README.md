@@ -1,2 +1,2 @@
 # Gameify_JSA
-Operation Gameify JSA
+Operation Gamify JSA
