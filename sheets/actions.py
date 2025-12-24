@@ -1,5 +1,6 @@
 import re # searches text patterns python-regular expression module
 import gspread 
+from datetime import datetime
 
 def get_id_from_url(url):
     # Extracts the long alphanumeric ID from a Google Sheet URL 
@@ -28,37 +29,57 @@ def find_email_column(records):
             return header
     return None
 
+def is_event_processed(log_sheet, event_id):
+    # Checks if the event_id already exists in Column A of Attendance_Logs
+    try:
+        # Get all IDs from the first column
+        processed_ids = log_sheet.col_values(1) 
+        return event_id in processed_ids
+    except:
+        return False
+    
+def log_event_completion(log_sheet, event_id, xp_amount):
+    # Writes the receipt to Attendance_Logs so we don't process it again 
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_sheet.append_row([event_id, timestamp, xp_amount])
+
 def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
     # Opens Event Sheet -> Opens Master Roster -> 
     # Awards XP to exising members -> Auto-enrolls new members
 
-    # 1. Opens the Event Sheet (the new form)
+    # 1. Gets the Event ID
     event_id = get_id_from_url(event_sheet_url)
     if not event_id: 
         return "❌Error: Could not parse Sheet ID From that URL."
     
+    # 2. Opens the Master Roster & Attendance Log
+    try: 
+        master_wb = client.open_by_key(master_sheet_id)
+        master_sheet = master_wb.worksheet("Master_Roster")
+        log_sheet = master_wb.worksheet("Attendance_Logs")
+    except Exception as e: 
+        return f"❌Error opening Master Roster: {e}"
+    
+    # 3. Checks if Event Sheet has been processed
+    if is_event_processed(log_sheet, event_id):
+        return "⚠️ STOP: This event sheet has already been processed! Check 'Attendance_Logs' for details."
+
+    # 4. Opens the Event Sheet
     try: 
         event_sheet = client.open_by_key(event_id).sheet1
         event_records = event_sheet.get_all_records()
     except Exception as e: 
         return f"❌Error opening Event Sheet: {e}"
-    
-    # 2. Opens the Master Roster
-    try: 
-        master_wb = client.open_by_key(master_sheet_id)
-        master_sheet = master_wb.worksheet("Master_Roster")
-        master_records = master_sheet.get_all_records()
-    except Exception as e: 
-        return f"❌Error opening Master Roster: {e}"
 
-    # 3. Finds the Email Column in the Event Sheet
+    # 5. Finds the Email Column in the Event Sheet
     email_col_name = find_email_column(event_records)
     if not email_col_name: 
         return "❌Error: Could not find a column name 'Email' in the event sheet. "
     
-    # 4. Creates a lookup directory for Master Roster for speed
+    # 6. Creates a lookup directory for Master Roster for speed
     # Format: {'email@ufl.edu': Row_Number}
     # gspread is 1-indexed, and row 1 is headers. So data starts at row 2
+    master_records = master_sheet.get_all_records()
     master_map = {}
     for i, row in enumerate(master_records):
         # i starts at 0, represent row 2 (data) - actual row is i + 2
@@ -69,7 +90,7 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
     new_members_count = 0
     existing_members_count = 0
 
-    # 5. Loop through Event Attendees
+    # 7. Process Attendees
     for row in event_records:
         attendee_email = str(row[email_col_name]).strip().lower()
         attendee_name = row.get("Name (First & Last)", "Unknown") # Fallback if Name column missing 
@@ -83,8 +104,8 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
             # Scenario A: The Regular (Update XP)
             row_num = master_map[attendee_email]
 
-            # Get current XP (handle empty cells)
-            current_xp_cell = master_sheet.cell(row_num, 5).value # Column 4 is total XP
+            # XP is in Column 5 (Name, Email, Year, Discord, XP)
+            current_xp_cell = master_sheet.cell(row_num, 5).value 
             try: 
                 current_xp = int(current_xp_cell)
             except: 
@@ -103,4 +124,7 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
             new_members_count += 1
             print(f"Added {attendee_email}!")
 
-    return f"✅Success! Updated {existing_members_count} and added {new_members_count}"
+    # 8. Log the transaction so it doesn't happen again
+    log_event_completion(log_sheet, event_id, xp_amount)
+
+    return f"✅ Success! Processed Sheet ID {event_id[:5]}... Updated {existing_members_count} and added {new_members_count}."
