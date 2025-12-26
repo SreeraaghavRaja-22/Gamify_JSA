@@ -104,3 +104,17 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
             print(f"Added {attendee_email}!")
 
     return f"✅Success! Updated {existing_members_count} and added {new_members_count}"
+
+def xp(client, master_sheet_id, discord_id):
+    discord_id = str(discord_id).strip()
+    sheet = client.open_by_key(master_sheet_id)
+    master = sheet.worksheet("Master_Roster")
+
+    records = master.get_all_records()
+    for row in records:
+        if row.get("Discord_ID", "").strip() == discord_id:
+            xp = int(row.get("Total_XP", 0))
+            rank = row.get("Rank", "Unknown")
+            return (f"Your rank is {rank} and you currently have {xp} XP.")
+        
+    return "Discord account not found in JSA's XP system. Please register using the join command (Ex: !join email@ufl.edu)."

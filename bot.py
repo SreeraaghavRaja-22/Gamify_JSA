@@ -51,5 +51,22 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     
     await ctx.send(result_message)
 
+# !xp command
+@bot.command()
+async def xp(ctx):
+    """
+    Usage: !xp 
+    """
+    
+    client = get_client()
+
+    result = xp(
+        client=client,
+        master_sheet_id=config.SHEET_ID,
+        discord_id=str(ctx.author.id)
+    )
+
+    await ctx.send(result)
+
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
