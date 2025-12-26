@@ -3,7 +3,7 @@ from discord.ext import commands
 import logging
 import config 
 from sheets.client import get_client
-from sheets.actions import process_event_data
+from sheets import actions
 
 # 1. Setup Intents (Required for Discord.py 2.0+)
 intents = discord.Intents.default()
@@ -32,7 +32,7 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     
     # Run the logic from actions.py
     # This uses the SHEET_ID from your config.py
-    result_message = process_event_data(
+    result_message = actions.process_event_data(
         client = client, 
         master_sheet_id = config.SHEET_ID, 
         event_sheet_url = sheet_url, 
@@ -50,7 +50,7 @@ async def join(ctx, email: str):
 
     client = get_client()
 
-    result = join(
+    result = actions.get_join(
         client=client,
         master_sheet_id=config.SHEET_ID,
         email=email,

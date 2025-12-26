@@ -105,7 +105,7 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
 
     return f"✅Success! Updated {existing_members_count} and added {new_members_count}"
 
-def join(client, master_sheet_id, email, discord_id):
+def get_join(client, master_sheet_id, email, discord_id):
     sheet = client.open_by_key(master_sheet_id)
     master = sheet.worksheet("Master_Roster")
     email = email.strip().lower()
