@@ -84,7 +84,7 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
             row_num = master_map[attendee_email]
 
             # Get current XP (handle empty cells)
-            current_xp_cell = master_sheet.cell(row_num, 5).value # Column 4 is total XP
+            current_xp_cell = master_sheet.cell(row_num, 5).value # Column 5 is total XP
             try: 
                 current_xp = int(current_xp_cell)
             except: 
@@ -104,3 +104,40 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
             print(f"Added {attendee_email}!")
 
     return f"✅Success! Updated {existing_members_count} and added {new_members_count}"
+
+def join(client, master_sheet_id, email, discord_id):
+    sheet = client.open_by_key(master_sheet_id)
+    master = sheet.worksheet("Master_Roster")
+    email = email.strip().lower()
+
+    records = master.get_all_records()
+    for i, row in enumerate(records):
+
+        if row.get("Email", "").strip().lower() == email:
+
+            row_discord_id = row.get("Discord_ID", "").strip()
+            
+            # Case 1: Email and Discord account are already linked.
+            if row_discord_id == discord_id:
+                return "This email is already registered."
+            
+            # Case 2: Email is in Master Roster but is not linked to a Discord account.
+            if row_discord_id == "":
+                row_number = i + 2
+                master.update_cell(row_number, 4, discord_id)
+                return "Your Discord account has been linked."
+            
+            # Case 3: Email is linked to another Discord account.
+            return "This email is already linked to another Discord account."
+
+    # Case 4: Email is not in Master Roster. 
+    new_row = [
+        "", # Name
+        email, # Email
+        "", # Year
+        discord_id, # Discord ID
+        0, # Total XP
+        "Newcomer" # Tier
+    ]
+    master.append_row(new_row)
+    return "You have been registered successfully on JSA's XP system."
