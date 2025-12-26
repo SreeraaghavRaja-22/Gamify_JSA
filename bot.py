@@ -45,7 +45,7 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
 @bot.command()
 async def join(ctx, email: str):
     """
-    Usage: !join email@ufl.edu Full Name
+    Usage: !join email@ufl.edu
     """
 
     client = get_client()
