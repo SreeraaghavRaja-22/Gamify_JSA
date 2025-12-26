@@ -42,7 +42,7 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     
     # Run the logic from actions.py
     # This uses the SHEET_ID from your config.py
-    result_message = process_event_data(
+    result_message = actions.process_event_data(
         client = client, 
         master_sheet_id = config.SHEET_ID, 
         event_sheet_url = sheet_url, 
