@@ -104,3 +104,43 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
             print(f"Added {attendee_email}!")
 
     return f"✅Success! Updated {existing_members_count} and added {new_members_count}"
+
+def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False):
+    sheet = client.open_by_key(master_sheet_id)
+    master = sheet.worksheet("Master_Roster")
+    records = master.get_all_records()
+
+    leaderboard_data = []
+    
+    for row in records:
+        name = row.get("Name", "Unknown")
+        xp = row.get("Total_XP", 0)
+        rank = row.get("Rank", "")
+        board_member = str(row.get("Board_Member", "N")).strip().upper()
+
+        if not include_board_members and board_member == "Y":
+            continue
+        
+        # Convert XP to integers for sorting.
+        try:
+            xp = int(row.get("Total_XP", 0))
+        except:
+            xp = 0
+        
+        leaderboard_data.append((name, xp, rank))
+
+    leaderboard_data.sort(key=lambda x: x[1], reverse=True)
+
+    message = "** JSA Leaderboard **\n"
+    current_place = 0
+    last_xp = None
+
+    for i, (name, xp, rank) in enumerate(leaderboard_data[:top], start=1):
+        # Give all members with the same amount of XP, the same place. 
+        if xp != last_xp:
+            current_place = i
+            last_xp = xp
+
+        message += f"{current_place}. {name} — {xp} XP : {rank}\n"
+
+    return message

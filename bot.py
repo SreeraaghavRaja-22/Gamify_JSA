@@ -3,7 +3,7 @@ from discord.ext import commands
 import logging
 import config 
 from sheets.client import get_client
-from sheets.actions import process_event_data
+from sheets import actions
 
 # client = get_client()
 # sheet = client.open_by_key(config.SHEET_ID)
@@ -50,6 +50,25 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     )
     
     await ctx.send(result_message)
+
+@bot.command()
+async def leaderboard(ctx, top: int = 10, board_member: str = None):
+    """
+    Usage:
+    !leaderboard
+    !leaderboard 10
+    !leaderboard all
+    !leaderboard 10 all
+    """
+    
+    client = get_client()
+
+    # Boolean parameters don't work well in Discord commands, so take board_member as a string and convert it to a boolean.
+    include_board_members = board_member == "all"
+
+    result = actions.get_leaderboard(client, config.SHEET_ID, top, include_board_members)
+
+    await ctx.send(result)
 
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
