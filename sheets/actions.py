@@ -113,35 +113,30 @@ def get_join(client, master_sheet_id, email, discord_id):
 
     records = master.get_all_records()
     for i, row in enumerate(records):
-
         row_discord_id = str(row.get("Discord_ID", "")).strip()
-        
-        # Case 1: Email and Discord account are already linked.
-        if row_discord_id == discord_id:
-            return "This Discord Account is already registered."
+        row_email = str(row.get("Email", "")).strip().lower()
 
-        if row.get("Email", "").strip().lower() == email:
-            
-            # Case 2: Email is in Master Roster but is not linked to a Discord account.
+        # If this row matches the email
+        if row_email == email:
+            # If Discord ID is empty, Link it
             if row_discord_id == "":
                 row_number = i + 2
                 master.update_cell(row_number, 4, discord_id)
-                return "Your Discord account has been linked."
+                return f"✅ Success! Linked {email} to this Discord account."
             
-            # Case 3: Email is linked to another Discord account.
-            return "This email is already linked to another Discord account."
+            # If Discord ID is ALREADY this user
+            if row_discord_id == discord_id:
+                return "ℹ️ You are already linked to this email."
+            
+            # If Discord ID belongs to someone else
+            return "❌ This email is already linked to a different Discord account."
 
-    # Case 4: Email is not in Master Roster. 
-    new_row = [
-        "", # Name
-        email, # Email
-        "", # Year
-        discord_id, # Discord ID
-        0, # Total XP
-        "Newcomer" # Tier
-    ]
+    # If email not found in sheet
+    # Create new user
+    new_row = ["", email, "", discord_id, 0, "Newcomer"]
     master.append_row(new_row)
-    return "You have been registered successfully on JSA's XP system."
+    return f"✅ Registered new account for {email}!"
+
 def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False):
     sheet = client.open_by_key(master_sheet_id)
     master = sheet.worksheet("Master_Roster")
@@ -151,38 +146,31 @@ def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False
     
     for row in records:
         name = row.get("Name", "Unknown")
-        xp = row.get("Total_XP", 0)
-        rank = row.get("Rank", "")
-        board_member = str(row.get("Board_Member", "N")).strip().upper()
-
-        if not include_board_members and board_member == "Y":
-            continue
+        try: xp = int(row.get("Total_XP", 0))
+        except: xp = 0
         
-        # Convert XP to integers for sorting.
-        try:
-            xp = int(row.get("Total_XP", 0))
-        except:
-            xp = 0
-        
-        leaderboard_data.append((name, xp, rank))
+        # Filter out empty names or 0 XP if you want
+        if name and xp >= 0:
+            leaderboard_data.append((name, xp))
 
+    # Sort by XP (Highest first)
     leaderboard_data.sort(key=lambda x: x[1], reverse=True)
 
-    message = "** JSA Leaderboard **\n"
-    current_place = 0
-    last_xp = None
+    message = "**🏆 JSA Leaderboard 🏆**\n"
     count = 0
+    for i, (name, xp) in enumerate(leaderboard_data):
+        if count >= top: break
+        
+        rank_emoji = "🔹"
+        if i == 0: rank_emoji = "🥇"
+        elif i == 1: rank_emoji = "🥈"
+        elif i == 2: rank_emoji = "🥉"
 
-    for i, (name, xp, rank) in enumerate(leaderboard_data, start=1):
-        if xp != last_xp:
-            current_place = i
-            last_xp = xp
-        message += f"{current_place}. {name} — {xp} XP : {rank}\n"
+        message += f"{rank_emoji} **{name}**: {xp} XP\n"
         count += 1
-        if count >= top and (i == len(leaderboard_data) or leaderboard_data[i][1] != xp):
-            break
-
+        
     return message
+
 def get_xp(client, master_sheet_id, discord_id):
     discord_id = str(discord_id).strip()
     sheet = client.open_by_key(master_sheet_id)
@@ -190,14 +178,10 @@ def get_xp(client, master_sheet_id, discord_id):
 
     records = master.get_all_records()
     for row in records:
-        row_discord_id = str(row.get("Discord_ID", "")).strip()
-        if row_discord_id == discord_id:
-            try:
-                xp = int(row.get("Total_XP", 0))
-            except:
-                xp = 0
+        if str(row.get("Discord_ID", "")).strip() == discord_id:
+            try: xp = int(row.get("Total_XP", 0))
+            except: xp = 0
             
-            rank = row.get("Rank", "Unknown")
-            return (f"Your rank is \"{rank}\" and you currently have {xp} XP!")
+            return f"✨ You currently have **{xp} XP**!"
         
-    return "Your Discord account was not found in JSA's XP system.\nPlease register using the join command (Ex: !join email@ufl.edu)."
+    return "❌ You aren't registered yet! Use `!join [email]` first."
