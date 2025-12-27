@@ -142,6 +142,7 @@ def get_join(client, master_sheet_id, email, discord_id):
     ]
     master.append_row(new_row)
     return "You have been registered successfully on JSA's XP system."
+
 def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False):
     sheet = client.open_by_key(master_sheet_id)
     master = sheet.worksheet("Master_Roster")
@@ -169,20 +170,28 @@ def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False
     leaderboard_data.sort(key=lambda x: x[1], reverse=True)
 
     message = "** JSA Leaderboard **\n"
-    current_place = 0
     last_xp = None
-    count = 0
+    shown = 0
 
-    for i, (name, xp, rank) in enumerate(leaderboard_data, start=1):
+
+    for index, (name, xp, rank) in enumerate(leaderboard_data):
         if xp != last_xp:
-            current_place = i
+            place = index + 1
             last_xp = xp
-        message += f"{current_place}. {name} — {xp} XP : {rank}\n"
-        count += 1
-        if count >= top and (i == len(leaderboard_data) or leaderboard_data[i][1] != xp):
+
+        # Make sure the separator is a ")" instead of a "." because discord automatically orders lists with "."
+        message += f"{place}) {name} — {xp} XP : {rank}\n"
+        shown += 1
+
+        # Stop after finishing all ties.
+        if shown >= top:
+            # If the next user exists and has same XP, keep going.
+            if index + 1 < len(leaderboard_data) and leaderboard_data[index + 1][1] == xp:
+                continue
             break
 
     return message
+
 def get_xp(client, master_sheet_id, discord_id):
     discord_id = str(discord_id).strip()
     sheet = client.open_by_key(master_sheet_id)
