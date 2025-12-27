@@ -142,3 +142,62 @@ def get_join(client, master_sheet_id, email, discord_id):
     ]
     master.append_row(new_row)
     return "You have been registered successfully on JSA's XP system."
+def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False):
+    sheet = client.open_by_key(master_sheet_id)
+    master = sheet.worksheet("Master_Roster")
+    records = master.get_all_records()
+
+    leaderboard_data = []
+    
+    for row in records:
+        name = row.get("Name", "Unknown")
+        xp = row.get("Total_XP", 0)
+        rank = row.get("Rank", "")
+        board_member = str(row.get("Board_Member", "N")).strip().upper()
+
+        if not include_board_members and board_member == "Y":
+            continue
+        
+        # Convert XP to integers for sorting.
+        try:
+            xp = int(row.get("Total_XP", 0))
+        except:
+            xp = 0
+        
+        leaderboard_data.append((name, xp, rank))
+
+    leaderboard_data.sort(key=lambda x: x[1], reverse=True)
+
+    message = "** JSA Leaderboard **\n"
+    current_place = 0
+    last_xp = None
+    count = 0
+
+    for i, (name, xp, rank) in enumerate(leaderboard_data, start=1):
+        if xp != last_xp:
+            current_place = i
+            last_xp = xp
+        message += f"{current_place}. {name} — {xp} XP : {rank}\n"
+        count += 1
+        if count >= top and (i == len(leaderboard_data) or leaderboard_data[i][1] != xp):
+            break
+
+    return message
+def get_xp(client, master_sheet_id, discord_id):
+    discord_id = str(discord_id).strip()
+    sheet = client.open_by_key(master_sheet_id)
+    master = sheet.worksheet("Master_Roster")
+
+    records = master.get_all_records()
+    for row in records:
+        row_discord_id = str(row.get("Discord_ID", "")).strip()
+        if row_discord_id == discord_id:
+            try:
+                xp = int(row.get("Total_XP", 0))
+            except:
+                xp = 0
+            
+            rank = row.get("Rank", "Unknown")
+            return (f"Your rank is \"{rank}\" and you currently have {xp} XP!")
+        
+    return "Your Discord account was not found in JSA's XP system.\nPlease register using the join command (Ex: !join email@ufl.edu)."
