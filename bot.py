@@ -51,6 +51,14 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     
     await ctx.send(result_message)
 
+@bot.command()
+async def leaderboard(ctx,  *args):
+    """
+    Usage:
+    !leaderboard
+    !leaderboard 10
+    !leaderboard all
+    !leaderboard 10 all
 # !xp command
 @bot.command()
 async def xp(ctx):
@@ -60,6 +68,18 @@ async def xp(ctx):
     
     client = get_client()
 
+    top = 10
+    include_board_members = False
+
+    for arg in args:
+        arg = arg.lower()
+
+        if arg.isdigit():
+            top = int(arg)
+        elif arg == "all":
+            include_board_members = True
+
+    result = actions.get_leaderboard(client, config.SHEET_ID, top, include_board_members)
     result = actions.get_xp(
         client=client,
         master_sheet_id=config.SHEET_ID,
