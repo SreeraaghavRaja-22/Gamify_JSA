@@ -5,23 +5,13 @@ import config
 from sheets.client import get_client
 from sheets import actions
 
-# client = get_client()
-# sheet = client.open_by_key(config.SHEET_ID)
-
-# # Access tabs.
-# master_roster = sheet.worksheet("Master_Roster")
-# attendance_logs = sheet.worksheet("Attendance_Logs")
-
-# # Should print "Arisa is a bozo"
-# print(sheet.worksheet("Master_Roster").row_values(1))
-
-# 1. Setup Intents (Required for Discord.py 2.0+)
+# Setup Intents
 intents = discord.Intents.default()
 intents.message_content = True # Allows bot to read commands
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# 2. Startup Event
+# Startup Event
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user.name}')
@@ -51,48 +41,66 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     
     await ctx.send(result_message)
 
-# !join
+# 4. COMMAND: !join
 @bot.command()
 async def join(ctx, email: str):
     """
     Usage: !join email@ufl.edu
+    Links your Discord account to your JSA Email.
     """
-
     client = get_client()
 
+    # We pass the author's ID so we can link it in the sheet
     result = actions.get_join(
         client=client,
         master_sheet_id=config.SHEET_ID,
         email=email,
+        discord_id=str(ctx.author.id)
+    )
+    
+    await ctx.send(result)
+
+# 5. COMMAND: !leaderboard
 @bot.command()
-async def leaderboard(ctx,  *args):
+async def leaderboard(ctx, *args):
     """
     Usage:
-    !leaderboard
-    !leaderboard 10
-    !leaderboard all
-    !leaderboard 10 all
-# !xp command
-@bot.command()
-async def xp(ctx):
+    !leaderboard        (Top 10)
+    !leaderboard 20     (Top 20)
+    !leaderboard all    (Includes Board Members)
     """
-    Usage: !xp 
-    """
-    
     client = get_client()
-
+    
+    # Default settings
     top = 10
     include_board_members = False
 
+    # Parse arguments (e.g., "all", "20")
     for arg in args:
         arg = arg.lower()
-
         if arg.isdigit():
             top = int(arg)
         elif arg == "all":
             include_board_members = True
 
-    result = actions.get_leaderboard(client, config.SHEET_ID, top, include_board_members)
+    result = actions.get_leaderboard(
+        client=client, 
+        master_sheet_id=config.SHEET_ID, 
+        top=top, 
+        include_board_members=include_board_members
+    )
+    
+    await ctx.send(result)
+
+# 6. COMMAND: !xp
+@bot.command()
+async def xp(ctx):
+    """
+    Usage: !xp 
+    Shows your current rank and point total.
+    """
+    client = get_client()
+
     result = actions.get_xp(
         client=client,
         master_sheet_id=config.SHEET_ID,
@@ -101,5 +109,6 @@ async def xp(ctx):
 
     await ctx.send(result)
 
-# 4. Run the Bot
-bot.run(config.DISCORD_TOKEN)
+# 7. Run the Bot
+if __name__ == "__main__":
+    bot.run(config.DISCORD_TOKEN)
