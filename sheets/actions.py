@@ -112,9 +112,14 @@ def get_xp(client, master_sheet_id, discord_id):
 
     records = master.get_all_records()
     for row in records:
-        if row.get("Discord_ID", "").strip() == discord_id:
-            xp = int(row.get("Total_XP", 0))
+        row_discord_id = str(row.get("Discord_ID", "")).strip()
+        if row_discord_id == discord_id:
+            try:
+                xp = int(row.get("Total_XP", 0))
+            except:
+                xp = 0
+            
             rank = row.get("Rank", "Unknown")
-            return (f"Your rank is {rank} and you currently have {xp} XP.")
+            return (f"Your rank is \"{rank}\" and you currently have {xp} XP!")
         
-    return "Discord account not found in JSA's XP system. Please register using the join command (Ex: !join email@ufl.edu)."
+    return "Your Discord account was not found in JSA's XP system.\nPlease register using the join command (Ex: !join email@ufl.edu)."
