@@ -134,13 +134,15 @@ def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False
     message = "** JSA Leaderboard **\n"
     current_place = 0
     last_xp = None
+    count = 0
 
-    for i, (name, xp, rank) in enumerate(leaderboard_data[:top], start=1):
-        # Give all members with the same amount of XP, the same place. 
+    for i, (name, xp, rank) in enumerate(leaderboard_data, start=1):
         if xp != last_xp:
             current_place = i
             last_xp = xp
-
         message += f"{current_place}. {name} — {xp} XP : {rank}\n"
+        count += 1
+        if count >= top and (i == len(leaderboard_data) or leaderboard_data[i][1] != xp):
+            break
 
     return message

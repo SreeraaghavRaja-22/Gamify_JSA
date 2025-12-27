@@ -52,7 +52,7 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     await ctx.send(result_message)
 
 @bot.command()
-async def leaderboard(ctx, top: int = 10, board_member: str = None):
+async def leaderboard(ctx,  *args):
     """
     Usage:
     !leaderboard
@@ -63,8 +63,16 @@ async def leaderboard(ctx, top: int = 10, board_member: str = None):
     
     client = get_client()
 
-    # Boolean parameters don't work well in Discord commands, so take board_member as a string and convert it to a boolean.
-    include_board_members = board_member == "all"
+    top = 10
+    include_board_members = False
+
+    for arg in args:
+        arg = arg.lower()
+
+        if arg.isdigit():
+            top = int(arg)
+        elif arg == "all":
+            include_board_members = True
 
     result = actions.get_leaderboard(client, config.SHEET_ID, top, include_board_members)
 
