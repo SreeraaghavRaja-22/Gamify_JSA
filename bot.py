@@ -51,6 +51,19 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     
     await ctx.send(result_message)
 
+# !join
+@bot.command()
+async def join(ctx, email: str):
+    """
+    Usage: !join email@ufl.edu
+    """
+
+    client = get_client()
+
+    result = actions.get_join(
+        client=client,
+        master_sheet_id=config.SHEET_ID,
+        email=email,
 @bot.command()
 async def leaderboard(ctx,  *args):
     """
