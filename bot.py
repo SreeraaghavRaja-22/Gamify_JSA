@@ -3,7 +3,7 @@ from discord.ext import commands
 import logging
 import config 
 from sheets.client import get_client
-from sheets.actions import process_event_data
+from sheets import actions
 
 # client = get_client()
 # sheet = client.open_by_key(config.SHEET_ID)
@@ -42,7 +42,7 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     
     # Run the logic from actions.py
     # This uses the SHEET_ID from your config.py
-    result_message = process_event_data(
+    result_message = actions.process_event_data(
         client = client, 
         master_sheet_id = config.SHEET_ID, 
         event_sheet_url = sheet_url, 
@@ -50,6 +50,23 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     )
     
     await ctx.send(result_message)
+
+# !xp command
+@bot.command()
+async def xp(ctx):
+    """
+    Usage: !xp 
+    """
+    
+    client = get_client()
+
+    result = actions.get_xp(
+        client=client,
+        master_sheet_id=config.SHEET_ID,
+        discord_id=str(ctx.author.id)
+    )
+
+    await ctx.send(result)
 
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
