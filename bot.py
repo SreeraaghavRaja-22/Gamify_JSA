@@ -59,6 +59,11 @@ async def leaderboard(ctx,  *args):
     !leaderboard 10
     !leaderboard all
     !leaderboard 10 all
+# !xp command
+@bot.command()
+async def xp(ctx):
+    """
+    Usage: !xp 
     """
     
     client = get_client()
@@ -75,6 +80,11 @@ async def leaderboard(ctx,  *args):
             include_board_members = True
 
     result = actions.get_leaderboard(client, config.SHEET_ID, top, include_board_members)
+    result = actions.get_xp(
+        client=client,
+        master_sheet_id=config.SHEET_ID,
+        discord_id=str(ctx.author.id)
+    )
 
     await ctx.send(result)
 
