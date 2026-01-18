@@ -3,7 +3,7 @@ from discord.ext import commands
 import logging
 import config 
 from sheets.client import get_client
-from sheets.actions import process_event_data
+from sheets import actions
 
 # client = get_client()
 # sheet = client.open_by_key(config.SHEET_ID)
@@ -42,7 +42,7 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     
     # Run the logic from actions.py
     # This uses the SHEET_ID from your config.py
-    result_message = process_event_data(
+    result_message = actions.process_event_data(
         client = client, 
         master_sheet_id = config.SHEET_ID, 
         event_sheet_url = sheet_url, 
@@ -50,6 +50,59 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
     )
     
     await ctx.send(result_message)
+
+# !join
+@bot.command()
+async def join(ctx, email: str):
+    """
+    Usage: !join email@ufl.edu
+    """
+
+    client = get_client()
+
+    result = actions.get_join(client, config.SHEET_ID, email, str(ctx.author.id))
+
+    await ctx.send(result)
+
+# !leaderboard
+@bot.command()
+async def leaderboard(ctx, *args):
+    """
+    Usage:
+    !leaderboard
+    !leaderboard 10
+    !leaderboard all
+    !leaderboard 10 all
+    """
+    client = get_client()
+
+    top = 10
+    include_board_members = False
+
+    for arg in args:
+        arg = arg.lower()
+
+        if arg.isdigit():
+            top = int(arg)
+        elif arg == "all":
+            include_board_members = True
+
+    result = actions.get_leaderboard(client, config.SHEET_ID, top, include_board_members)
+
+    await ctx.send(result)
+
+# !xp 
+@bot.command()
+async def xp(ctx):
+    """
+    Usage: !xp 
+    """
+
+    client = get_client()
+
+    result = actions.get_xp(client, config.SHEET_ID, str(ctx.author.id))
+
+    await ctx.send(result) 
 
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
