@@ -151,5 +151,21 @@ async def on_command_error(ctx, error):
         # Log other errors to the terminal
         print(f"Error: {error}")
 
+
+class SocialsView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(discord.ui.Button(label="INSTAGRAM", style = discord.ButtonStyle.blurple, url=config.INSTAGRAM))
+        self.add_item(discord.ui.Button(label="LINKTREE", style=discord.ButtonStyle.red, url=config.LINKTREE))
+        self.add_item(discord.ui.Button(label="JSA CALENDAR", style=discord.ButtonStyle.green, url=config.CALENDAR))
+
+@bot.command(name="socials", help="This is a link to all of JSA's socials")
+async def socials(ctx: commands.Context):
+    embed = discord.Embed(
+        title = "JSA Socials",
+        description="Tap a button to open a link",
+    )
+    await ctx.send(embed=embed, view=SocialsView())
+
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
