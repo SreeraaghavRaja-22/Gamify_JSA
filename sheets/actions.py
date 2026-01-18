@@ -1,9 +1,8 @@
-import re # searches text patterns python-regular expression module
+import re 
 import gspread 
 from datetime import datetime
 
 # --- RANK CONFIGURATION ---
-# Centralized place to change rank names and their XP requirements.
 RANK_THRESHOLDS = {
     0: "Newcomer",
     100: "Rank 1",
@@ -14,30 +13,6 @@ RANK_THRESHOLDS = {
 }
 
 # --- HEADER CONFIGURATION ---
-# Define the exact headers in your Master_Roster to fix the "duplicate headers" error.
-MASTER_HEADERS = ['Name', 'Email', 'Year', 'Discord_ID', 'Total_XP', 'Rank']
-
-def calculate_rank(xp):
-    # Calculates the rank name based on XP thresholds.
-    sorted_thresholds = sorted(RANK_THRESHOLDS.keys(), reverse=True)
-    for threshold in sorted_thresholds:
-        if xp >= threshold:
-            return RANK_THRESHOLDS[threshold]
-    return "Newcomer"
-
-# --- RANK CONFIGURATION ---
-# Centralized place to change rank names and their XP requirements.
-RANK_THRESHOLDS = {
-    0: "Newcomer",
-    100: "Rank 1",
-    200: "Rank 2",
-    300: "Rank 3",
-    400: "Rank 4",
-    500: "Rank 5"
-}
-
-# --- HEADER CONFIGURATION ---
-# Define the exact headers in your Master_Roster to fix the "duplicate headers" error.
 MASTER_HEADERS = ['Name', 'Email', 'Year', 'Discord_ID', 'Total_XP', 'Rank']
 
 def calculate_rank(xp):
@@ -198,7 +173,7 @@ def get_join(client, master_sheet_id, email, discord_id):
         
         # Case 1: Email and Discord account are already linked.
         if row_discord_id == discord_id:
-            return "This Discord Account is already registered."
+            return "✨ **You're already in!** This Discord account is already registered in our system."
 
         if row.get("Email", "").strip().lower() == email:
             
@@ -206,10 +181,10 @@ def get_join(client, master_sheet_id, email, discord_id):
             if row_discord_id == "":
                 row_number = i + 2
                 master.update_cell(row_number, 4, discord_id)
-                return "Your Discord account has been linked."
+                return "🔗 **Account Linked!** We've successfully connected your Discord to your JSA records. Welcome!"
             
             # Case 3: Email is linked to another Discord account.
-            return "This email is already linked to another Discord account."
+            return "⚠️ **Oops!** That email is already connected to a different Discord account."
 
     # Case 4: Email is not in Master Roster. 
     new_row = [
@@ -218,10 +193,10 @@ def get_join(client, master_sheet_id, email, discord_id):
         "", # Year
         discord_id, # Discord ID
         0, # Total XP
-        "Newcomer" # Tier
+        "Newcomer" # Rank
     ]
     master.append_row(new_row)
-    return "You have been registered successfully on JSA's XP system."
+    return "🎉 **Welcome aboard!** You've been successfully registered in the JSA XP system. Time to start earning! 🚀"
 
 def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False):
     sheet = client.open_by_key(master_sheet_id)
@@ -230,7 +205,6 @@ def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False
 
     leaderboard_data = []
     for row in records:
-        # .strip() is crucial: Discord won't bold if there is a space inside the **
         name = str(row.get("Name", "Unknown")).strip()
         xp_val = row.get("Total_XP", 0)
         rank_name = str(row.get("Rank", "Unknown")).strip()
@@ -247,10 +221,10 @@ def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False
 
     leaderboard_data.sort(key=lambda x: x[1], reverse=True)
 
-    # Using Hangul Filler (\u3164) for alignment - it is more stable than Braille dots
+    # Using Hangul Filler (\u3164) for alignment 
     s = "\u3164" 
 
-    # Header - Wrap the bolding tightly around the text
+    # Header
     message = f"╭━━━ {s*2} ⚔️ **JSA LEADERBOARD** ⚔️ {s*2} ━━━╮\n\n"
     
     last_xp = None
@@ -264,8 +238,6 @@ def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False
         medal = "🥇" if place == 1 else "🥈" if place == 2 else "🥉" if place == 3 else "⭐"
         suffix = "st" if place == 1 else "nd" if place == 2 else "rd" if place == 3 else ")"
         
-        # We now bold the ENTIRE line including the medal. 
-        # This is the most reliable way to force Discord to render the bolding.
         if place <= 3:
             message += f"{s*6} {medal} {place}{suffix} | {name}\n"
             message += f"{s*8} ★ {xp} XP ★\n"
@@ -278,7 +250,7 @@ def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False
         # WARNING: If too many people have the same XP, the message will break 2000 characters.
         if shown >= top:
             if index + 1 < len(leaderboard_data) and leaderboard_data[index + 1][1] == xp:
-                # Limit to 20 people to prevent the message from failing to bold/send
+                # Limits to 20 people to prevent the message from failing 
                 if shown > 20: 
                     message += f"{s*3} ... and more tied with {xp} XP ...\n"
                     break
@@ -307,3 +279,34 @@ def get_xp(client, master_sheet_id, discord_id):
             return (f"Your rank is \"{rank}\" and you currently have {xp} XP!")
         
     return "Your Discord account was not found in JSA's XP system.\nPlease register using the join command (Ex: !join email@ufl.edu)."
+
+def award_quest_xp(client, master_sheet_id, discord_id, xp_amount):
+    # Finds a user by Discord ID and adds XP to Master Roster
+    try: 
+        sheet = client.open_by_key(master_sheet_id)
+        master = sheet.worksheet("Master_Roster")
+        records = master.get_all_records(expected_headers=MASTER_HEADERS)
+    except Exception as e:
+        return f"❌ Error accessing Sheet: {e}"
+    
+    for i, row in enumerate(records):
+        # Finds the row matching the user's Discord ID
+        if str(row.get("Discord_ID", "")).strip() == str(discord_id):
+            row_num = i + 2 # Accounts for header and 1-indexing
+            
+            # Calculates new XP
+            try:
+                current_xp = int(row.get("Total_XP", 0))
+            except:
+                current_xp = 0
+            
+            new_xp = current_xp + xp_amount
+            new_rank = calculate_rank(new_xp)
+
+            # Updates XP and Rank
+            master.update_cell(row_num, 5, new_xp)
+            master.update_cell(row_num, 6, new_rank)
+
+            return f"Added {xp_amount} XP! New Total: {new_xp} ({new_rank})"
+            
+    return "❌ User not found in roster. Please use !join first."
