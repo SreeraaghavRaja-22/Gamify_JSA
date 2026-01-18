@@ -5,6 +5,7 @@ load_dotenv()
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
+GUILD_ID = os.getenv("GUILD_NUM")
 
 # Quest Channels
 DAILY_SUBMISSION_ID = 1462265730874478653  # Replace with actual ID

@@ -9,27 +9,35 @@ from sheets import actions
 intents = discord.Intents.default()
 intents.message_content = True # Allows bot to read commands
 
-bot = commands.Bot(command_prefix='!', intents=intents)
-
 # 2. Startup Event
-@bot.event
-async def on_ready():
-    print(f'Logged in as {bot.user.name}')
-    print('Bot is ready to process sheets!')
+class Client(commands.Bot):
+    async def on_ready(self):
+        print(f'Logged in as {self.user}')
+        print('Bot is ready to process sheets!')
+        try:
+            guild = discord.Object(id = config.GUILD_ID)
+            synced = await self.tree.sync(guild = guild)
+            print(f"Synced {len(synced)} commands to guild")
+
+        except Exception as e:
+            print(f"Errors syncing commands: {e}")
+
+bot = Client(command_prefix="!", intents=intents)
+GUILD_ID = discord.Object(id = config.GUILD_ID)
 
 # 3. Commands:
 
 # !process_event
-@bot.command()
+@bot.tree.command(name="process_event", description="add attendance sheet url for certain event", guild=GUILD_ID)
 @commands.has_role("Officer")
 # @commands.has_role("Officer") # Uncomment this later when you have roles set up
-async def process_event(ctx, sheet_url: str, xp_amount: int):
+async def process_event(interaction: discord.Interaction, sheet_url: str, xp_amount: int):
     """
     Usage: !process_event [URL] [XP]
     Example: !process_event https://docs.google.com/spreadsheets/d/123... 40
     """
 
-    await ctx.send(f"🔄 Processing event sheet... this might take a moment.")
+    await interaction.response.send_message(f"🔄 Processing event sheet... this might take a moment.")
     
     # Get the google sheet client
     client = get_client()
@@ -42,24 +50,24 @@ async def process_event(ctx, sheet_url: str, xp_amount: int):
         xp_amount = xp_amount
     )
     
-    await ctx.send(result_message)
+    await interaction.followup.send(result_message)
 
 # !join
-@bot.command()
-async def join(ctx, email: str):
+@bot.tree.command(name="join", description="join the JSA Bot", guild=GUILD_ID)
+async def join(interaction: discord.Interaction, email: str):
     """
     Usage: !join email@ufl.edu
     """
 
     client = get_client()
 
-    result = actions.get_join(client, config.SHEET_ID, email, str(ctx.author.id))
+    result = actions.get_join(client, config.SHEET_ID, email, str(interaction.user.id))
 
-    await ctx.send(result)
+    await interaction.response.send_message(result)
 
 # !leaderboard
-@bot.command()
-async def leaderboard(ctx, *args):
+@bot.tree.command(name="leaderboard", description="print the leaderboard", guild=GUILD_ID)
+async def leaderboard(interaction: discord.Interaction, top: int = 10, include_board_members: bool = False):
     """
     Usage:
     !leaderboard
@@ -70,33 +78,22 @@ async def leaderboard(ctx, *args):
 
     client = get_client()
 
-    top = 10
-    include_board_members = False
-
-    for arg in args:
-        arg = arg.lower()
-
-        if arg.isdigit():
-            top = int(arg)
-        elif arg == "all":
-            include_board_members = True
-
     result = actions.get_leaderboard(client, config.SHEET_ID, top, include_board_members)
 
-    await ctx.send(result)
+    await interaction.response.send_message(result)
 
 # !xp 
-@bot.command()
-async def xp(ctx):
+@bot.tree.command(name="xp", description="print out your xp", guild=GUILD_ID)
+async def xp(interaction: discord.Interaction):
     """
     Usage: !xp 
     """
 
     client = get_client()
 
-    result = actions.get_xp(client, config.SHEET_ID, str(ctx.author.id))
+    result = actions.get_xp(client, config.SHEET_ID, str(interaction.user.id))
 
-    await ctx.send(result) 
+    await interaction.response.send_message(result) 
 
 # quests
 
@@ -143,10 +140,10 @@ async def on_raw_reaction_add(payload):
 
 
 # Handles permission errors
-@bot.event
-async def on_command_error(ctx, error):
+@bot.tree.error
+async def on_command_error(interaction: discord.Interaction, error):
     if isinstance(error, commands.MissingRole):
-        await ctx.send("❌ **Access Denied:** You do not have the 'Officer' role required to use this command.")
+        await interaction.response.send_message("❌ **Access Denied:** You do not have the 'Officer' role required to use this command.", ephemeral=True)
     else:
         # Log other errors to the terminal
         print(f"Error: {error}")
@@ -159,13 +156,13 @@ class SocialsView(discord.ui.View):
         self.add_item(discord.ui.Button(label="LINKTREE", style=discord.ButtonStyle.red, url=config.LINKTREE))
         self.add_item(discord.ui.Button(label="JSA CALENDAR", style=discord.ButtonStyle.green, url=config.CALENDAR))
 
-@bot.command(name="socials", help="This is a link to all of JSA's socials")
-async def socials(ctx: commands.Context):
+@bot.tree.command(name="socials", description="This is a link to all of JSA's socials", guild=GUILD_ID)
+async def socials(interaction: discord.Interaction):
     embed = discord.Embed(
         title = "JSA Socials",
         description="Tap a button to open a link",
     )
-    await ctx.send(embed=embed, view=SocialsView())
+    await interaction.response.send_message(embed=embed, view=SocialsView())
 
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
