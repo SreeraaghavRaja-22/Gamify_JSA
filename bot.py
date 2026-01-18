@@ -27,10 +27,9 @@ GUILD_ID = discord.Object(id = config.GUILD_ID)
 
 # 3. Commands:
 
-# !process_event
+# Processing Events
 @bot.tree.command(name="process_event", description="add attendance sheet url for certain event", guild=GUILD_ID)
 @commands.has_role("Officer")
-# @commands.has_role("Officer") # Uncomment this later when you have roles set up
 async def process_event(interaction: discord.Interaction, sheet_url: str, xp_amount: int):
     """
     Usage: !process_event [URL] [XP]
@@ -52,7 +51,7 @@ async def process_event(interaction: discord.Interaction, sheet_url: str, xp_amo
     
     await interaction.followup.send(result_message)
 
-# !join
+# Join
 @bot.tree.command(name="join", description="join the JSA Bot", guild=GUILD_ID)
 async def join(interaction: discord.Interaction, email: str):
     """
@@ -65,16 +64,10 @@ async def join(interaction: discord.Interaction, email: str):
 
     await interaction.response.send_message(result)
 
-# !leaderboard
+# Leaderboard
 @bot.tree.command(name="leaderboard", description="print the leaderboard", guild=GUILD_ID)
 async def leaderboard(interaction: discord.Interaction, top: int = 10, include_board_members: bool = False):
-    """
-    Usage:
-    !leaderboard
-    !leaderboard 10
-    !leaderboard all
-    !leaderboard 10 all
-    """
+
 
     client = get_client()
 
@@ -82,22 +75,17 @@ async def leaderboard(interaction: discord.Interaction, top: int = 10, include_b
 
     await interaction.response.send_message(result)
 
-# !xp 
+# XP
 @bot.tree.command(name="xp", description="print out your xp", guild=GUILD_ID)
 async def xp(interaction: discord.Interaction):
-    """
-    Usage: !xp 
-    """
-
+    
     client = get_client()
 
     result = actions.get_xp(client, config.SHEET_ID, str(interaction.user.id))
 
     await interaction.response.send_message(result) 
 
-# quests
-
-
+# Quests
 @bot.event
 async def on_raw_reaction_add(payload):
     quest_channels = {
@@ -138,7 +126,6 @@ async def on_raw_reaction_add(payload):
 
     await channel.send(response_message)
 
-
 # Handles permission errors
 @bot.tree.error
 async def on_command_error(interaction: discord.Interaction, error):
@@ -148,7 +135,6 @@ async def on_command_error(interaction: discord.Interaction, error):
         # Log other errors to the terminal
         print(f"Error: {error}")
 
-
 class SocialsView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -156,6 +142,7 @@ class SocialsView(discord.ui.View):
         self.add_item(discord.ui.Button(label="LINKTREE", style=discord.ButtonStyle.red, url=config.LINKTREE))
         self.add_item(discord.ui.Button(label="JSA CALENDAR", style=discord.ButtonStyle.green, url=config.CALENDAR))
 
+# Socials
 @bot.tree.command(name="socials", description="This is a link to all of JSA's socials", guild=GUILD_ID)
 async def socials(interaction: discord.Interaction):
     embed = discord.Embed(

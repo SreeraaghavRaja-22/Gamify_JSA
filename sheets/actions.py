@@ -5,11 +5,12 @@ from datetime import datetime
 # --- RANK CONFIGURATION ---
 RANK_THRESHOLDS = {
     0: "Newcomer",
-    100: "Rank 1",
-    200: "Rank 2",
-    300: "Rank 3",
-    400: "Rank 4",
-    500: "Rank 5"
+    50: "Daiyo's Classmate",
+    150: "Daiyo's Friend",
+    300: "Daiyo's Pet",
+    500: "JSA Regular",
+    750: "JSA Otaku",
+    1050: "Honorary JSA Board"
 }
 
 # --- HEADER CONFIGURATION ---
