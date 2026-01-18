@@ -14,3 +14,7 @@ DAILY_XP = 10
 WEEKLY_XP = 20
 OFFICER_ROLE = "Officer"
 APPROVE_EMOJI = "✅"
+
+INSTAGRAM = "https://www.instagram.com/uf_jsa/"
+LINKTREE = "https://linktr.ee/uf.jsa?utm_source=ig&utm_medium=social&utm_content=link_in_bio"
+CALENDAR = "https://calendar.google.com/calendar/embed?src=secretary.ufjsa%40gmail.com&ctz=America%2FNew_York"
