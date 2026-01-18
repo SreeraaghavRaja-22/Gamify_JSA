@@ -1,5 +1,29 @@
 import re # searches text patterns python-regular expression module
 import gspread 
+from datetime import datetime
+
+# --- RANK CONFIGURATION ---
+# Centralized place to change rank names and their XP requirements.
+RANK_THRESHOLDS = {
+    0: "Newcomer",
+    100: "Rank 1",
+    200: "Rank 2",
+    300: "Rank 3",
+    400: "Rank 4",
+    500: "Rank 5"
+}
+
+# --- HEADER CONFIGURATION ---
+# Define the exact headers in your Master_Roster to fix the "duplicate headers" error.
+MASTER_HEADERS = ['Name', 'Email', 'Year', 'Discord_ID', 'Total_XP', 'Rank']
+
+def calculate_rank(xp):
+    # Calculates the rank name based on XP thresholds.
+    sorted_thresholds = sorted(RANK_THRESHOLDS.keys(), reverse=True)
+    for threshold in sorted_thresholds:
+        if xp >= threshold:
+            return RANK_THRESHOLDS[threshold]
+    return "Newcomer"
 
 # --- RANK CONFIGURATION ---
 # Centralized place to change rank names and their XP requirements.
@@ -51,15 +75,42 @@ def find_email_column(records):
             return header
     return None
 
+def is_event_processed(log_sheet, event_id):
+    # Checks if the event_id already exists in Column A of Attendance_Logs
+    try:
+        # Get all IDs from the first column
+        processed_ids = log_sheet.col_values(1) 
+        return event_id in processed_ids
+    except:
+        return False
+    
+def log_event_completion(log_sheet, event_id, xp_amount):
+    # Writes the receipt to Attendance_Logs so we don't process it again 
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_sheet.append_row([event_id, timestamp, xp_amount])
+
 def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
     # Opens Event Sheet -> Opens Master Roster -> 
     # Awards XP to exising members -> Auto-enrolls new members
 
-    # 1. Opens the Event Sheet (the new form)
+    # 1. Gets the Event ID
     event_id = get_id_from_url(event_sheet_url)
     if not event_id: 
         return "❌Error: Could not parse Sheet ID From that URL."
     
+    # 2. Opens the Master Roster & Attendance Log
+    try: 
+        master_wb = client.open_by_key(master_sheet_id)
+        master_sheet = master_wb.worksheet("Master_Roster")
+        log_sheet = master_wb.worksheet("Attendance_Logs")
+    except Exception as e: 
+        return f"❌Error opening Master Roster: {e}"
+    
+    # 3. Checks if Event Sheet has been processed
+    if is_event_processed(log_sheet, event_id):
+        return "⚠️ STOP: This event sheet has already been processed! Check 'Attendance_Logs' for details."
+
+    # 4. Opens the Event Sheet
     try: 
         event_sheet = client.open_by_key(event_id).sheet1
         event_records = event_sheet.get_all_records()
@@ -79,9 +130,10 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
     if not email_col_name: 
         return "❌Error: Could not find a column name 'Email' in the event sheet. "
     
-    # 4. Creates a lookup directory for Master Roster for speed
+    # 6. Creates a lookup directory for Master Roster for speed
     # Format: {'email@ufl.edu': Row_Number}
     # gspread is 1-indexed, and row 1 is headers. So data starts at row 2
+    master_records = master_sheet.get_all_records()
     master_map = {}
     for i, row in enumerate(master_records):
         # i starts at 0, represent row 2 (data) - actual row is i + 2
@@ -92,7 +144,7 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
     new_members_count = 0
     existing_members_count = 0
 
-    # 5. Loop through Event Attendees
+    # 7. Process Attendees
     for row in event_records:
         attendee_email = str(row[email_col_name]).strip().lower()
         attendee_name = row.get("Name (First & Last)", "Unknown") # Fallback if Name column missing 
@@ -128,7 +180,10 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
             new_members_count += 1
             print(f"Added {attendee_email}!")
 
-    return f"✅ Success! Updated {existing_members_count} and added {new_members_count}"
+    # 8. Log the transaction so it doesn't happen again
+    log_event_completion(log_sheet, event_id, xp_amount)
+
+    return f"✅  Success! Processed Sheet ID {event_id[:5]}... Updated {existing_members_count} and added {new_members_count}."
 
 def get_join(client, master_sheet_id, email, discord_id):
     sheet = client.open_by_key(master_sheet_id)
