@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import logging
 import config 
 from sheets.client import get_client
@@ -29,12 +30,9 @@ GUILD_ID = discord.Object(id = config.GUILD_ID)
 
 # Processing Events
 @bot.tree.command(name="process_event", description="add attendance sheet url for certain event", guild=GUILD_ID)
-@commands.has_role("Officer")
+@app_commands.default_permissions()
+@app_commands.checks.has_role(config.OFFICER_ROLE_ID)
 async def process_event(interaction: discord.Interaction, sheet_url: str, xp_amount: int):
-    """
-    Usage: !process_event [URL] [XP]
-    Example: !process_event https://docs.google.com/spreadsheets/d/123... 40
-    """
 
     await interaction.response.send_message(f"🔄 Processing event sheet... this might take a moment.")
     
@@ -54,9 +52,6 @@ async def process_event(interaction: discord.Interaction, sheet_url: str, xp_amo
 # Join
 @bot.tree.command(name="join", description="join the JSA Bot", guild=GUILD_ID)
 async def join(interaction: discord.Interaction, email: str):
-    """
-    Usage: !join email@ufl.edu
-    """
 
     client = get_client()
 
