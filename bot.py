@@ -5,6 +5,7 @@ import logging
 import config 
 from sheets.client import get_client
 from sheets import actions
+from wordle import wordle_actions
 
 # 1. Setup Intents 
 intents = discord.Intents.default()
@@ -160,6 +161,44 @@ async def shota(interaction: discord.Interaction):
     "two Undokai events, several banquets, and many other events. His biggest hope is for JSA to grow and continue to " \
     "follow its mission to provide a safe space for anyone and everyone to learn about Japanese culture!"
     await interaction.response.send_message(response_message)
+
+# Claim_Wordle
+@bot.tree.command(name="claim_wordle", description="Claim XP for completing Wordle (paste the Wordle share text).", guild=GUILD_ID)
+async def claim_wordle(interaction: discord.Interaction, share_text: str):
+    # parse the share text
+    parsed = wordle_actions.parse_wordle_share(share_text)
+
+    if not parsed:
+        await interaction.response.send_message(
+        "I couldn't find a valid header. Paste the line that looks like: 'Wordle 1674 3/6' plus the grid.", ephemeral=True)
+        return
+    
+    # convert the parsed text to puzzle num and number of attempts
+    puzzle, attempts = parsed
+
+    # Wordle must be completed
+    if attempts is None: 
+        await interaction.response.send_message("Looks like this was X/6 (not completed). No XP rewarded.", ephemeral = True) 
+        return
+    
+    client = get_client()
+    
+    # Prevents double claim error for the same puzzle
+    if actions.wordle_claim_exists(client, config.SHEET_ID, puzzle, interaction.user.id):
+        await interaction.response.send_message("You already claimed this Wordle.", ephemeral=True)
+        return
+
+    # Log first so we don't double award if an error occurs
+    actions.log_wordle_claim(client, config.SHEET_ID, puzzle, interaction.user.id)
+
+    # set XP_REWARD 
+    XP_REWARD = 10
+
+    # Reward the user with XP_REWARD XP
+    result = actions.award_quest_xp(client, config.SHEET_ID, interaction.user.id, XP_REWARD)
+    
+    # Send the message that the XP has been rewarded
+    await interaction.response.send_message(f"✅ Wordle {puzzle} completed. +{XP_REWARD} XP\n{result}", ephemeral = True)
 
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
