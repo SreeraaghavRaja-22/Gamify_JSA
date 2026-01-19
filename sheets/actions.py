@@ -199,7 +199,7 @@ def get_join(client, master_sheet_id, email, discord_id):
     master.append_row(new_row)
     return "🎉 **Welcome aboard!** You've been successfully registered in the JSA XP system. Time to start earning! 🚀"
 
-def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False):
+def get_leaderboard(client, master_sheet_id, top=10, mode="regular"):
     sheet = client.open_by_key(master_sheet_id)
     master = sheet.worksheet("Master_Roster")
     records = master.get_all_records()
@@ -209,9 +209,12 @@ def get_leaderboard(client, master_sheet_id, top=10, include_board_members=False
         name = str(row.get("Name", "Unknown")).strip()
         xp_val = row.get("Total_XP", 0)
         rank_name = str(row.get("Rank", "Unknown")).strip()
-        board_member = str(row.get("Board_Member", "N")).strip().upper()
+        is_board = str(row.get("Board_Member", "N")).strip().upper() == "Y"
 
-        if not include_board_members and board_member == "Y":
+        # Filtering Logic
+        if mode == "regular" and is_board:
+            continue
+        if mode == "board" and not is_board:
             continue
         
         try:
