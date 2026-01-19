@@ -29,7 +29,7 @@ GUILD_ID = discord.Object(id = config.GUILD_ID)
 # 3. Commands:
 
 # Processing Events
-@bot.tree.command(name="process_event", description="add attendance sheet url for certain event", guild=GUILD_ID)
+@bot.tree.command(name="process_event", description="Adds attendance sheet url for certain event (only officers", guild=GUILD_ID)
 @app_commands.default_permissions()
 @app_commands.checks.has_role(config.OFFICER_ROLE_ID)
 async def process_event(interaction: discord.Interaction, sheet_url: str, xp_amount: int):
@@ -50,7 +50,7 @@ async def process_event(interaction: discord.Interaction, sheet_url: str, xp_amo
     await interaction.followup.send(result_message)
 
 # Join
-@bot.tree.command(name="join", description="join the JSA Bot", guild=GUILD_ID)
+@bot.tree.command(name="join", description="Joins the JSA Battle Pass!", guild=GUILD_ID)
 async def join(interaction: discord.Interaction, email: str):
 
     client = get_client()
@@ -60,9 +60,8 @@ async def join(interaction: discord.Interaction, email: str):
     await interaction.response.send_message(result)
 
 # Leaderboard
-@bot.tree.command(name="leaderboard", description="print the leaderboard", guild=GUILD_ID)
+@bot.tree.command(name="leaderboard", description="Prints out the leaderboard", guild=GUILD_ID)
 async def leaderboard(interaction: discord.Interaction, top: int = 10, include_board_members: bool = False):
-
 
     client = get_client()
 
@@ -71,7 +70,7 @@ async def leaderboard(interaction: discord.Interaction, top: int = 10, include_b
     await interaction.response.send_message(result)
 
 # XP
-@bot.tree.command(name="xp", description="print out your xp", guild=GUILD_ID)
+@bot.tree.command(name="xp", description="Prints out your total XP!", guild=GUILD_ID)
 async def xp(interaction: discord.Interaction):
     
     client = get_client()
@@ -145,6 +144,16 @@ async def socials(interaction: discord.Interaction):
         description="Tap a button to open a link",
     )
     await interaction.response.send_message(embed=embed, view=SocialsView())
+
+# Shota
+@bot.tree.command(name="shota", description="This is a dedication to JSA's Founder Shota Konno!", guild=GUILD_ID)
+async def shota(interaction: discord.Interaction):
+    response_message = "In winter of 2021, Shota Konno (c.o. 2025) founded the UF Japanese Student Association " \
+    "along with Taise Miyazumi (c.o. 2024), Annika Joy Cruz (c.o. 2025), and Ellie Uchida-Prebor (c.o. 2025). " \
+    "Shota served as president for three years, during which he oversaw JSA's first AASA participation, " \
+    "two Undokai events, several banquets, and many other events. His biggest hope is for JSA to grow and continue to " \
+    "follow its mission to provide a safe space for anyone and everyone to learn about Japanese culture!"
+    await interaction.response.send_message(response_message)
 
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
