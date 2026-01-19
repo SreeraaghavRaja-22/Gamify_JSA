@@ -314,3 +314,28 @@ def award_quest_xp(client, master_sheet_id, discord_id, xp_amount):
             return f"Added {xp_amount} XP! New Total: {new_xp} ({new_rank})"
             
     return "❌ User not found in roster. Please use !join first."
+
+# wordle_claim_exists (function to return if the wordle is already claimed 
+def wordle_claim_exists(client, master_sheet_id, puzzle, discord_id):
+    sheet = client.open_by_key(master_sheet_id)
+    wordle_sheet = sheet.worksheet("Wordle_Claims")
+
+    # converts the puzzle and discord_id to strings
+    puzzle = str(puzzle).strip()
+    discord_id = str(discord_id).strip()
+
+    # loop through each row and see if the puzzle has already been claimed by a corresponding discord id 
+    rows = wordle_sheet.get_all_values()
+    for row in rows[1:]:
+        if len(row) >= 2 and row[0].strip() == puzzle and row[1].strip() == discord_id:
+            return True
+    return False
+
+# log the wordle claim 
+def log_wordle_claim(client, master_sheet_id, puzzle, discord_id):
+    sheet = client.open_by_key(master_sheet_id)
+    wordle_sheet = sheet.worksheet("Wordle_Claims")
+
+    # logs the wordle claim 
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    wordle_sheet.append_row([str(puzzle), str(discord_id), timestamp], value_input_option = "RAW")
