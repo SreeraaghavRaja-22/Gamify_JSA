@@ -191,14 +191,11 @@ async def claim_wordle(interaction: discord.Interaction, share_text: str):
     # Log first so we don't double award if an error occurs
     actions.log_wordle_claim(client, config.SHEET_ID, puzzle, interaction.user.id)
 
-    # set XP_REWARD 
-    XP_REWARD = 10
-
-    # Reward the user with XP_REWARD XP
-    result = actions.award_quest_xp(client, config.SHEET_ID, interaction.user.id, XP_REWARD)
+    # Reward the user with WORDLE_XP XP
+    result = actions.award_quest_xp(client, config.SHEET_ID, interaction.user.id, config.WORDLE_XP)
     
     # Send the message that the XP has been rewarded
-    await interaction.response.send_message(f"✅ Wordle {puzzle} completed. +{XP_REWARD} XP\n{result}", ephemeral = True)
+    await interaction.response.send_message(f"✅ Wordle {puzzle} completed. +{config.WORDLE_XP} XP\n{result}", ephemeral = True)
 
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
