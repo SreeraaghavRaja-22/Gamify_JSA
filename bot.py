@@ -61,13 +61,19 @@ async def join(interaction: discord.Interaction, email: str):
 
 # Leaderboard
 @bot.tree.command(name="leaderboard", description="Prints out the leaderboard", guild=GUILD_ID)
-async def leaderboard(interaction: discord.Interaction, top: int = 10, include_board_members: bool = False):
-
+@app_commands.describe(type="Choose between Regular or Board members")
+@app_commands.choices(type=[
+    app_commands.Choice(name="Regular Members", value="regular"),
+    app_commands.Choice(name="Board Members", value="board")
+])
+async def leaderboard(interaction: discord.Interaction, type: str = "regular", top: int = 10):
+    await interaction.response.defer() 
+    
     client = get_client()
+    
+    result = actions.get_leaderboard(client, config.SHEET_ID, top, mode=type)
 
-    result = actions.get_leaderboard(client, config.SHEET_ID, top, include_board_members)
-
-    await interaction.response.send_message(result)
+    await interaction.followup.send(result)
 
 # XP
 @bot.tree.command(name="xp", description="Prints out your total XP!", guild=GUILD_ID)
