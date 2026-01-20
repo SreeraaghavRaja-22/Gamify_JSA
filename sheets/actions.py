@@ -339,3 +339,42 @@ def log_wordle_claim(client, master_sheet_id, puzzle, discord_id):
     # logs the wordle claim 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     wordle_sheet.append_row([str(puzzle), str(discord_id), timestamp], value_input_option = "RAW")
+
+# compares the two sheets and checks if the member is a board member, if so, add y/n to board member column
+def check_if_board_member(client, master_sheet_id):
+    sheet = client.open_by_key(master_sheet_id)
+    master = sheet.worksheet("Master_Roster")
+    board_members = sheet.worksheet("Board_Roster")
+
+    # 1. Retrieve all data from master sheet and board members sheet
+    master_records = master.get_all_records()
+    board_records = board_members.get_all_records()
+
+    # 2. Build a lookup set of board member emails
+    board_emails = {
+        row["Email"].strip().lower()
+        for row in board_records
+        if row.get("Email")
+    }
+
+    # 3. Find the column inded for board_member
+    headers = master.row_values(1)
+    board_col = headers.index("Board_Member") + 1
+    email_col = headers.index("Email") + 1
+
+    updates = []
+
+    # 4. Decide Y/N for each row
+    for i, row in enumerate(master_records, start=2):
+        email = row.get("Email", "").strip().lower()
+
+        is_board = "Y" if email in board_emails else "N"
+
+        # need to ascii align to get capital letters (get values like D1, D2...DX)
+        updates.append({
+            "range": f"{chr(64 + board_col)}{i}",
+            "values": [[is_board]]
+        })
+
+    # 5. Batch update for efficiency
+    master.batch_update(updates)
