@@ -21,4 +21,4 @@ APPROVE_EMOJI = "✅"
 
 INSTAGRAM = "https://www.instagram.com/uf_jsa/"
 LINKTREE = "https://linktr.ee/uf.jsa?utm_source=ig&utm_medium=social&utm_content=link_in_bio"
-CALENDAR = "https://calendar.google.com/calendar/embed?src=secretary.ufjsa%40gmail.com&ctz=America%2FNew_York"
+CALENDAR = "https://calendar.google.com/calendar/u/0?cid=YmViZDVhYTNhYzFiMTEwOTIzZWUyZGM1NTkwZDg4ZjA1NTI2Njk1NDA3YzA0Yjk4YmIxMzU4YWIzZmEwYmYwZkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t"
