@@ -197,5 +197,16 @@ async def claim_wordle(interaction: discord.Interaction, share_text: str):
     # Send the message that the XP has been rewarded
     await interaction.response.send_message(f"✅ Wordle {puzzle} completed. +{config.WORDLE_XP} XP\n{result}", ephemeral = True)
 
+# command to add whether certain members are board members 
+@bot.tree.command(name="sync_board_members", description = "Sync the board member bool on master roster", guild=GUILD_ID)
+@app_commands.checks.has_role(config.OFFICER_ROLE_ID)
+async def sync_board_members(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+
+    client = get_client()
+    actions.check_if_board_member(client, config.SHEET_ID)
+
+    await interaction.followup.send("🔄 Board member statuses synced.")
+
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
