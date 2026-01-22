@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord.ext import tasks
 from discord import app_commands
 import logging
 import config 
@@ -16,11 +17,20 @@ class Client(commands.Bot):
     async def on_ready(self):
         print(f'Logged in as {self.user}')
         print('Bot is ready to process sheets!')
-        try:
-            guild = discord.Object(id = config.GUILD_ID)
-            synced = await self.tree.sync(guild = guild)
-            print(f"Synced {len(synced)} commands to guild")
+        
+        # Start the quest loops
+        if not daily_quest_loop.is_running():
+            daily_quest_loop.start()
+            print("Daily quest loop started.")
+        if not weekly_quest_loop.is_running():
+            weekly_quest_loop.start()
+            print("Weekly quest loop started.")
 
+        try:
+            # Syncing commands to the specific guild for instant updates
+            guild = discord.Object(id=config.GUILD_ID) 
+            synced = await self.tree.sync(guild=guild)
+            print(f"Synced {len(synced)} commands to guild {config.GUILD_ID}")
         except Exception as e:
             print(f"Errors syncing commands: {e}")
 
@@ -87,6 +97,88 @@ async def xp(interaction: discord.Interaction):
     await interaction.response.send_message(result) 
 
 # Quests
+# Helper function to format the Quest into a nice Discord Embed
+def format_quest_embed(quest, category_name):
+    is_weekly = category_name == "Weekly_Quests"
+    xp = config.WEEKLY_XP if is_weekly else config.DAILY_XP
+    
+    embed = discord.Embed(
+        title=f"🏯 {quest['Quest Name']}",
+        description=quest['Description'],
+        color=discord.Color.gold() if is_weekly else discord.Color.blue()
+    )
+    embed.add_field(name="⚔️ Objective", value=quest['Objective'], inline=False)
+    embed.add_field(name="📜 Verification", value=quest['Verification Method'], inline=False)
+    embed.add_field(name="✨ Reward", value=f"{xp} XP", inline=True)
+    embed.set_footer(text=f"Frequency: {'Weekly' if is_weekly else 'Daily'}")
+    return embed
+
+# Task for Daily Quests (Runs every 24 hours)
+@tasks.loop(hours=24)
+async def daily_quest_loop():
+    channel = bot.get_channel(config.QUEST_CHANNEL_ID)
+    if channel:
+        client = get_client()
+        quest = actions.get_random_quest(client, config.SHEET_ID, "Daily_Quests")
+        if quest:
+            await channel.send("☀️ **Today's Daily Quest is live!**", embed=format_quest_embed(quest, "Daily_Quests"))
+
+# Task for Weekly Quests (Runs every 168 hours)
+@tasks.loop(hours=168)
+async def weekly_quest_loop():
+    channel = bot.get_channel(config.QUEST_CHANNEL_ID)
+    if channel:
+        client = get_client()
+        quest = actions.get_random_quest(client, config.SHEET_ID, "Weekly_Quests")
+        if quest:
+            await channel.send("🔥 **A new Weekly Quest has appeared!**", embed=format_quest_embed(quest, "Weekly_Quests"))
+
+
+# The /test_quest command
+@bot.tree.command(name="test_quest", description="Test a quest announcement", guild=GUILD_ID)
+@app_commands.describe(type="Choose Daily or Weekly")
+@app_commands.choices(type=[
+    app_commands.Choice(name="Daily", value="Daily_Quests"),
+    app_commands.Choice(name="Weekly", value="Weekly_Quests")
+])
+@app_commands.checks.has_role(config.OFFICER_ROLE_ID)
+async def test_quest(interaction: discord.Interaction, type: str):
+    await interaction.response.defer(ephemeral=True)
+    client = get_client()
+    quest = actions.get_random_quest(client, config.SHEET_ID, type) #
+    
+    if quest:
+        embed = format_quest_embed(quest, type)
+        channel = bot.get_channel(config.QUEST_CHANNEL_ID)
+        if channel:
+            await channel.send(content=f"🧪 **Test Announcement:**", embed=embed)
+            await interaction.followup.send(f"✅ Posted to <#{config.QUEST_CHANNEL_ID}>")
+        else:
+            await interaction.followup.send("❌ Channel not found.")
+    else:
+        await interaction.followup.send("❌ Could not fetch quest.")
+
+# The /refresh_quest command
+@bot.tree.command(name="refresh_quest", description="Force a new quest announcement", guild=GUILD_ID)
+@app_commands.describe(type="Choose Daily or Weekly")
+@app_commands.choices(type=[
+    app_commands.Choice(name="Daily", value="Daily_Quests"),
+    app_commands.Choice(name="Weekly", value="Weekly_Quests")
+])
+@app_commands.checks.has_role(config.OFFICER_ROLE_ID)
+async def refresh_quest(interaction: discord.Interaction, type: str):
+    await interaction.response.defer(ephemeral=True)
+    client = get_client()
+    quest = actions.get_random_quest(client, config.SHEET_ID, type) #
+    
+    if quest:
+        channel = bot.get_channel(config.QUEST_CHANNEL_ID)
+        if channel:
+            prefix = "☀️ **Daily Quest Refreshed!**" if type == "Daily_Quests" else "🔥 **Weekly Quest Refreshed!**"
+            embed = format_quest_embed(quest, type)
+            await channel.send(content=f"{prefix}\n*Requested by {interaction.user.mention}*", embed=embed)
+            await interaction.followup.send(f"✅ Refreshed {type}!")
+
 @bot.event
 async def on_raw_reaction_add(payload):
     quest_channels = {

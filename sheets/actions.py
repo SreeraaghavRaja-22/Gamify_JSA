@@ -1,5 +1,6 @@
 import re 
 import gspread 
+import random
 from datetime import datetime
 
 # --- RANK CONFIGURATION ---
@@ -314,6 +315,43 @@ def award_quest_xp(client, master_sheet_id, discord_id, xp_amount):
             return f"Added {xp_amount} XP! New Total: {new_xp} ({new_rank})"
             
     return "❌ User not found in roster. Please use !join first."
+
+def get_random_quest(client, master_sheet_id, sheet_name):
+    # Picks a random quest from the specified sheet and avoids back-to-back repeats
+    try:
+        spreadsheet = client.open_by_key(master_sheet_id)
+        worksheet = spreadsheet.worksheet(sheet_name)
+        records = worksheet.get_all_records()
+        headers = worksheet.row_values(1)
+        
+        # Ensure the 'Last_Used' column exists in your sheet headers
+        if "Last_Used" not in headers:
+            return None
+        last_used_col_idx = headers.index("Last_Used") + 1
+
+        if not records:
+            return None
+
+        # Sort quests by Last_Used timestamp (most recent first)
+        # We add the original row index (i+2) to each record for updating later
+        indexed_records = []
+        for i, r in enumerate(records):
+            indexed_records.append({"data": r, "row_num": i + 2})
+
+        indexed_records.sort(key=lambda x: str(x["data"].get("Last_Used", "")), reverse=True)
+
+        # Exclude the most recently used quest if there is more than one
+        pool = indexed_records[1:] if len(indexed_records) > 1 else indexed_records
+        selection = random.choice(pool)
+
+        # Update the timestamp in the sheet
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        worksheet.update_cell(selection["row_num"], last_used_col_idx, now_str)
+
+        return selection["data"]
+    except Exception as e:
+        print(f"Error fetching quest from {sheet_name}: {e}")
+        return None
 
 # wordle_claim_exists (function to return if the wordle is already claimed 
 def wordle_claim_exists(client, master_sheet_id, puzzle, discord_id):
