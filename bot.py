@@ -179,6 +179,34 @@ async def refresh_quest(interaction: discord.Interaction, type: str):
             await channel.send(content=f"{prefix}\n*Requested by {interaction.user.mention}*", embed=embed)
             await interaction.followup.send(f"✅ Refreshed {type}!")
 
+# The /post_specific_quest
+@bot.tree.command(name="post_specific_quest", description="Manually select and post a specific quest", guild=GUILD_ID)
+@app_commands.describe(type="Choose Daily or Weekly", name="Exactly match the Quest Name from the sheet")
+@app_commands.choices(type=[
+    app_commands.Choice(name="Daily", value="Daily_Quests"),
+    app_commands.Choice(name="Weekly", value="Weekly_Quests")
+])
+@app_commands.checks.has_role(config.OFFICER_ROLE_ID)
+async def post_specific_quest(interaction: discord.Interaction, type: str, name: str):
+    await interaction.response.defer(ephemeral=True)
+    
+    client = get_client()
+    quest = actions.get_specific_quest(client, config.SHEET_ID, type, name)
+    
+    if quest:
+        channel = bot.get_channel(config.QUEST_CHANNEL_ID)
+        if channel:
+            # Matches the exact wording from the automatic loops
+            announcement_text = "☀️ **Today's Daily Quest is live!**" if type == "Daily_Quests" else "🔥 **A new Weekly Quest has appeared!**"
+            
+            embed = format_quest_embed(quest, type)
+            await channel.send(content=announcement_text, embed=embed)
+            await interaction.followup.send(f"✅ Successfully posted '{name}' as the official quest.")
+        else:
+            await interaction.followup.send("❌ Quests channel not found.")
+    else:
+        await interaction.followup.send(f"❌ Error: Could not find a quest named '{name}' in the {type} sheet.")
+
 @bot.event
 async def on_raw_reaction_add(payload):
     quest_channels = {
