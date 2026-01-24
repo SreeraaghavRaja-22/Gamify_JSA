@@ -353,6 +353,30 @@ def get_random_quest(client, master_sheet_id, sheet_name):
         print(f"Error fetching quest from {sheet_name}: {e}")
         return None
 
+def get_specific_quest(client, master_sheet_id, sheet_name, quest_name):
+    # Fetches a specific quest by its name from the sheet
+    try:
+        spreadsheet = client.open_by_key(master_sheet_id)
+        worksheet = spreadsheet.worksheet(sheet_name)
+        records = worksheet.get_all_records()
+        headers = worksheet.row_values(1)
+        
+        if "Last_Used" not in headers:
+            return None
+        last_used_col_idx = headers.index("Last_Used") + 1
+
+        # Searches for the quest by name
+        for i, row in enumerate(records):
+            if str(row.get("Quest Name", "")).strip().lower() == quest_name.strip().lower():
+                # Updates the timestamp 
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                worksheet.update_cell(i + 2, last_used_col_idx, now_str)
+                return row
+        return None
+    except Exception as e:
+        print(f"Error fetching specific quest: {e}")
+        return None
+
 # wordle_claim_exists (function to return if the wordle is already claimed 
 def wordle_claim_exists(client, master_sheet_id, puzzle, discord_id):
     sheet = client.open_by_key(master_sheet_id)
