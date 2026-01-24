@@ -143,7 +143,7 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
                 current_xp = 0
 
             new_xp = current_xp + xp_amount
-            new_rank = calculate_rank(xp_amount)
+            new_rank = calculate_rank(new_xp)
 
             master_sheet.update_cell(row_num, 5, new_xp)
             master_sheet.update_cell(row_num, 6, new_rank)
