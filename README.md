@@ -1,76 +1,158 @@
-# Gamify JSA
+<!-- Badges -->
+<p align="center">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" /></a>
+  <a href="https://discordpy.readthedocs.io/"><img src="https://img.shields.io/badge/Discord.py-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord.py" /></a>
+  <a href="https://developers.google.com/sheets/api"><img src="https://img.shields.io/badge/Google%20Sheets-34A853?style=for-the-badge&logo=googlesheets&logoColor=white" alt="Google Sheets" /></a>
+  <a href="https://gspread.readthedocs.io/"><img src="https://img.shields.io/badge/gspread-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="gspread" /></a>
+  <a href="https://www.digitalocean.com/"><img src="https://img.shields.io/badge/DigitalOcean-0080FF?style=for-the-badge&logo=digitalocean&logoColor=white" alt="DigitalOcean" /></a>
+</p>
 
-A Discord bot that gamifies participation for the UF Japanese Student Association (JSA) with an XP-based progression system, quests, and leaderboards.
+---
 
-## Features
+<h1 align="center">🏯 Gamify JSA</h1>
 
-- **XP System**: Members earn XP by attending events, completing quests, and playing Wordle
-- **Rank Progression**: Automatic rank upgrades based on XP thresholds (Newcomer → Honorary JSA Board)
-- **Event Processing**: Officers can process Google Sheets attendance data to award XP to attendees
-- **Daily & Weekly Quests**: Automated quest announcements with officer-verified submissions
-- **Wordle Integration**: Members can claim XP for completing daily Wordle puzzles
-- **Leaderboards**: Separate leaderboards for regular members and board members
-- **Auto-Enrollment**: New attendees are automatically added to the Master Roster
+<p align="center">
+  <strong>Level up your JSA experience.</strong>
+</p>
 
-## Rank Thresholds
+<p align="center">
+  A Discord bot that gamifies participation for the UF Japanese Student Association with an XP-based progression system, quests, leaderboards, and more.
+</p>
+
+<!-- TODO: Add screenshot or demo GIF here -->
+<!-- <p align="center">
+  <img src="./demo.gif" alt="Gamify JSA Demo" width="600" />
+</p> -->
+
+---
+
+## Overview
+
+**Gamify JSA** transforms club participation into an engaging RPG-like experience. Members earn XP by attending events, completing daily and weekly quests, and even playing Wordle. As they accumulate XP, they progress through ranks — from humble **Newcomer** all the way to **Honorary JSA Board**.
+
+Officers can easily process event attendance through Google Sheets integration, and the bot automatically awards XP and updates member ranks. The quest system keeps members engaged between events with fun challenges verified by the officer team.
+
+---
+
+## How It Works
+
+1. **Join the System** — Members use `/join` with their email to link their Discord account to the XP roster.
+2. **Attend Events** — Officers process attendance sheets, and XP is automatically awarded to all attendees.
+3. **Complete Quests** — Daily and weekly quests are posted automatically. Submit proof and get officer approval for XP.
+4. **Play Wordle** — Paste your Wordle results with `/claim_wordle` to earn bonus XP.
+5. **Climb the Ranks** — Check your progress with `/xp` and compete on the `/leaderboard`.
+
+---
+
+## Rank Progression
+
+<p align="center">
 
 | XP Required | Rank |
-|-------------|------|
-| 0 | Newcomer |
-| 50 | Daiyo's Classmate |
-| 150 | Daiyo's Friend |
-| 300 | Daiyo's Pet |
-| 500 | JSA Regular |
-| 750 | JSA Otaku |
-| 1050 | Honorary JSA Board |
+|:-----------:|:-----|
+| 0 | 🌱 Newcomer |
+| 50 | 📚 Daiyo's Classmate |
+| 150 | 🤝 Daiyo's Friend |
+| 300 | 🐕 Daiyo's Pet |
+| 500 | ⭐ JSA Regular |
+| 750 | 🎌 JSA Otaku |
+| 1050 | 👑 Honorary JSA Board |
 
-## Requirements
+</p>
+
+---
+
+## Key Features
+
+- **XP & Rank System** — Earn XP from events, quests, and Wordle. Automatically rank up as you progress.
+- **Event Processing** — Officers paste a Google Sheets attendance URL and XP is awarded to all attendees instantly.
+- **Daily & Weekly Quests** — Automated quest announcements with officer-verified submissions.
+- **Wordle Integration** — Claim XP daily by sharing your Wordle results.
+- **Dual Leaderboards** — Separate rankings for regular members and board members.
+- **Auto-Enrollment** — New event attendees are automatically added to the roster.
+- **Duplicate Protection** — Prevents double-processing of events and double-claiming of Wordle puzzles.
+
+---
+
+## Tech Stack
+
+### Bot Framework
+- **Python 3.8+** — Core programming language
+- **Discord.py** — Discord API wrapper with slash commands
+- **python-dotenv** — Environment variable management
+
+### Data Storage
+- **Google Sheets API** — Cloud-based data storage for rosters, quests, and logs
+- **gspread** — Python client for Google Sheets
+- **google-auth** — Service account authentication
+
+### Deployment
+- **DigitalOcean Droplet** — Ubuntu VPS for 24/7 hosting
+- **systemd** — Process management and auto-restart
+
+---
+
+## Getting Started
+
+### Prerequisites
 
 - Python 3.8+
-- Discord Bot Token
-- Google Cloud Service Account with Sheets API access
-- Google Sheets for data storage
+- Discord Bot Token ([Discord Developer Portal](https://discord.com/developers/applications))
+- Google Cloud Service Account with Sheets API enabled
+- Google Sheet set up with required worksheets
 
-## Installation
+### Installation
 
 1. Clone the repository:
+
    ```bash
-   git clone https://github.com/your-username/Gamify_JSA.git
+   git clone https://github.com/YOUR_USERNAME/Gamify_JSA.git
    cd Gamify_JSA
    ```
 
-2. Install dependencies:
+2. Create and activate a virtual environment:
+
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Create a `.env` file in the root directory:
+4. Set up environment variables:
+
+   Create a `.env` file in the root directory:
+
    ```env
    DISCORD_TOKEN=your_discord_bot_token
    GOOGLE_SHEET_ID=your_google_sheet_id
-   GUILD_NUM=your_discord_guild_id
+   GUILD_NUM=your_discord_server_id
    ```
 
-4. Add your Google Cloud service account credentials as `credentials.json` in the root directory.
+5. Add your Google Cloud service account credentials as `credentials.json` in the root directory.
 
-5. Set up your Google Sheet with the following worksheets:
-   - `Master_Roster` - Columns: Name, Email, Year, Discord_ID, Total_XP, Rank, Board_Member
-   - `Attendance_Logs` - Tracks processed event sheets
-   - `Daily_Quests` - Quest Name, Description, Objective, Verification Method, Last_Used
-   - `Weekly_Quests` - Same structure as Daily_Quests
-   - `Wordle_Claims` - Tracks Wordle submissions
-   - `Board_Roster` - List of board member emails
+6. Set up your Google Sheet with these worksheets:
 
-## Configuration
+   | Worksheet | Purpose |
+   |-----------|---------|
+   | `Master_Roster` | Member data (Name, Email, Year, Discord_ID, Total_XP, Rank, Board_Member) |
+   | `Attendance_Logs` | Tracks processed event sheets |
+   | `Daily_Quests` | Quest Name, Description, Objective, Verification Method, Last_Used |
+   | `Weekly_Quests` | Same structure as Daily_Quests |
+   | `Wordle_Claims` | Tracks claimed Wordle puzzles |
+   | `Board_Roster` | List of board member emails |
 
-Edit `config.py` to customize:
+7. Run the bot:
 
-- `DAILY_XP` / `WEEKLY_XP` / `WORDLE_XP` - XP rewards for different activities
-- `QUEST_CHANNEL_ID` - Channel for quest announcements
-- `DAILY_SUBMISSION_ID` / `WEEKLY_SUBMISSION_ID` - Channels for quest submissions
-- `OFFICER_ROLE` / `OFFICER_ROLE_ID` - Role required for admin commands
-- `APPROVE_EMOJI` - Emoji used by officers to approve quest submissions
-- Social links (Instagram, Linktree, Calendar)
+   ```bash
+   python bot.py
+   ```
+
+---
 
 ## Commands
 
@@ -85,7 +167,7 @@ Edit `config.py` to customize:
 | `/socials` | Get links to JSA social media |
 | `/shota` | Learn about JSA's founder |
 
-### Officer Commands (Require Officer Role)
+### Officer Commands
 
 | Command | Description |
 |---------|-------------|
@@ -95,39 +177,83 @@ Edit `config.py` to customize:
 | `/post_specific_quest <type> <name>` | Post a specific quest by name |
 | `/sync_board_members` | Sync board member status from Board_Roster |
 
-## Quest System
-
-- **Daily Quests**: Posted automatically every 24 hours
-- **Weekly Quests**: Posted automatically every 7 days
-- Officers approve quest submissions by reacting with ✅ in the submission channels
-- Approved submissions automatically award the configured XP amount
+---
 
 ## Project Structure
 
 ```
 Gamify_JSA/
-├── bot.py              # Main Discord bot with commands and event handlers
-├── config.py           # Configuration and environment variables
-├── requirements.txt    # Python dependencies
-├── credentials.json    # Google Cloud service account credentials
+├── bot.py                # Main Discord bot with commands and event handlers
+├── config.py             # Configuration and environment variables
+├── requirements.txt      # Python dependencies
+├── credentials.json      # Google Cloud service account (not in repo)
+├── .env                  # Environment variables (not in repo)
 ├── sheets/
-│   ├── client.py       # Google Sheets authentication
-│   └── actions.py      # Sheet operations (XP, leaderboards, quests)
+│   ├── client.py         # Google Sheets authentication
+│   └── actions.py        # Sheet operations (XP, leaderboards, quests)
 └── wordle/
-    └── wordle_actions.py  # Wordle share text parsing
+    └── wordle_actions.py # Wordle share text parsing
 ```
 
-## Running the Bot
+---
+
+## Configuration
+
+Edit `config.py` to customize:
+
+| Setting | Description |
+|---------|-------------|
+| `DAILY_XP` / `WEEKLY_XP` / `WORDLE_XP` | XP rewards for different activities |
+| `QUEST_CHANNEL_ID` | Channel for quest announcements |
+| `DAILY_SUBMISSION_ID` / `WEEKLY_SUBMISSION_ID` | Channels for quest submissions |
+| `OFFICER_ROLE` / `OFFICER_ROLE_ID` | Role required for admin commands |
+| `APPROVE_EMOJI` | Emoji used to approve quest submissions (default: ✅) |
+
+---
+
+## Deployment
+
+The bot is deployed on a **DigitalOcean Droplet** running Ubuntu, managed with **systemd** for automatic restarts and boot persistence.
+
+### Useful Server Commands
+
+| Command | Description |
+|---------|-------------|
+| `systemctl status jsabot` | Check if bot is running |
+| `systemctl restart jsabot` | Restart the bot |
+| `systemctl stop jsabot` | Stop the bot |
+| `journalctl -u jsabot -f` | View live logs |
+| `journalctl -u jsabot -n 100` | View last 100 log lines |
+
+### Updating the Bot
 
 ```bash
-python bot.py
+cd ~/Gamify_JSA
+git pull
+systemctl restart jsabot
 ```
 
-The bot will:
-1. Connect to Discord and sync slash commands
-2. Start the daily and weekly quest loops
-3. Listen for commands and quest submission reactions
+---
 
-## License
+## Credits
 
-This project was created for the UF Japanese Student Association.
+- **[Discord.py](https://discordpy.readthedocs.io/)** — Discord API wrapper
+- **[gspread](https://gspread.readthedocs.io/)** — Google Sheets Python client
+- **[DigitalOcean](https://www.digitalocean.com/)** — Cloud hosting
+- **Cursor** — AI-powered IDE
+
+---
+
+## Future Roadmap
+
+- [ ] Quest streak tracking with bonus XP
+- [ ] `/profile` command with detailed stats
+- [ ] Progress bar to next rank
+- [ ] Batch Google Sheets updates for better performance
+- [ ] GitHub Actions for automated deployment
+
+---
+
+<p align="center">
+  Made with ❤️ for the UF Japanese Student Association
+</p>
