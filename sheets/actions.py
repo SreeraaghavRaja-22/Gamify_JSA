@@ -52,6 +52,21 @@ def find_email_column(records):
             return header
     return None
 
+def find_name_column(records):
+    # Scans the first row of data to find which key looks like a name
+    if not records:
+        return None
+    
+    # Gets the keys (headers) from the first row
+    headers = records[0].keys()
+
+    for header in headers:
+        clean_header = header.lower().strip()
+        # Looks for name, full name, first name, etc. but excludes username
+        if "name" in clean_header and "user" not in clean_header:
+            return header
+    return None
+
 def is_event_processed(log_sheet, event_id):
     # Checks if the event_id already exists in Column A of Attendance_Logs
     try:
@@ -107,6 +122,9 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
     if not email_col_name: 
         return "❌Error: Could not find a column name 'Email' in the event sheet. "
     
+    # 4. Finds the Name Column in the Event Sheet
+    name_col_name = find_name_column(event_records)
+    
     # 6. Creates a lookup directory for Master Roster for speed
     # Format: {'email@ufl.edu': Row_Number}
     # gspread is 1-indexed, and row 1 is headers. So data starts at row 2
@@ -124,7 +142,7 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
     # 7. Process Attendees
     for row in event_records:
         attendee_email = str(row[email_col_name]).strip().lower()
-        attendee_name = row.get("Name (First & Last)", "Unknown") # Fallback if Name column missing 
+        attendee_name = row.get(name_col_name, "Unknown") if name_col_name else "Unknown" 
         attendee_year = row.get("Year", "")
 
         # If email is empty, skip
