@@ -210,14 +210,14 @@ async def post_specific_quest(interaction: discord.Interaction, type: str, name:
 @bot.event
 async def on_raw_reaction_add(payload):
     quest_channels = {
-        config.DAILY_SUBMISSION_ID: config.DAILY_XP,
-        config.WEEKLY_SUBMISSION_ID: config.WEEKLY_XP
+        config.DAILY_SUBMISSION_ID: ("Daily Quest Approval", config.DAILY_XP),
+        config.WEEKLY_SUBMISSION_ID: ("Weekly Quest Approval", config.WEEKLY_XP)
     }
 
     if payload.channel_id not in quest_channels or str(payload.emoji) != config.APPROVE_EMOJI:
         return
 
-    # Gets the member who reacted
+    # Gets the member who reacted (the officer)
     guild = bot.get_guild(payload.guild_id)
     member = guild.get_member(payload.user_id)
     if member is None:
@@ -234,10 +234,25 @@ async def on_raw_reaction_add(payload):
     if message.author.bot:
         return
 
-    # Awards XP sends message
-    xp_to_give = quest_channels[payload.channel_id]
+    # Get quest type and XP amount
+    reason, xp_to_give = quest_channels[payload.channel_id]
+    
+    # Awards XP with audit logging (prevents double-dipping)
     client = get_client()
-    result = actions.award_quest_xp(client, config.SHEET_ID, str(message.author.id), xp_to_give)
+    result = actions.award_quest_xp(
+        client=client,
+        master_sheet_id=config.SHEET_ID,
+        discord_id=str(message.author.id),
+        xp_amount=xp_to_give,
+        officer_id=str(payload.user_id),
+        message_id=str(payload.message_id),
+        reason=reason
+    )
+    
+    # Check if this was a duplicate approval
+    if "Already Approved" in result:
+        # Silently ignore duplicate approvals (don't spam the channel)
+        return
     
     response_message = (
         f"⚔️ **Quest Accomplished!** 🏯\n"

@@ -81,6 +81,27 @@ def log_event_completion(log_sheet, event_id, xp_amount):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_sheet.append_row([event_id, timestamp, xp_amount])
 
+def is_quest_processed(audit_sheet, message_id):
+    # Checks if the message_id already exists in Column A of Audit_Logs
+    # Prevents double-dipping when multiple officers react to the same submission
+    try:
+        processed_ids = audit_sheet.col_values(1)
+        return str(message_id) in processed_ids
+    except:
+        return False
+
+def log_quest_approval(audit_sheet, message_id, officer_id, recipient_id, xp_amount, reason):
+    # Logs the quest approval to Audit_Logs for transparency and tracking
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    audit_sheet.append_row([
+        str(message_id),
+        timestamp,
+        str(officer_id),
+        str(recipient_id),
+        xp_amount,
+        reason
+    ])
+
 def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
     # Opens Event Sheet -> Opens Master Roster -> 
     # Awards XP to exising members -> Auto-enrolls new members
@@ -303,12 +324,27 @@ def get_xp(client, master_sheet_id, discord_id):
         
     return "Your Discord account was not found in JSA's XP system.\nPlease register using the join command (Ex: !join email@ufl.edu)."
 
-def award_quest_xp(client, master_sheet_id, discord_id, xp_amount):
+def award_quest_xp(client, master_sheet_id, discord_id, xp_amount, officer_id=None, message_id=None, reason=None):
     # Finds a user by Discord ID and adds XP to Master Roster
+    # Optional audit logging when officer_id, message_id, and reason are provided
     try: 
         sheet = client.open_by_key(master_sheet_id)
         master = sheet.worksheet("Master_Roster")
         records = master.get_all_records(expected_headers=MASTER_HEADERS)
+        
+        # If message_id is provided, check for duplicate approval (prevents double-dipping)
+        if message_id is not None:
+            try:
+                audit_sheet = sheet.worksheet("Audit_Logs")
+                if is_quest_processed(audit_sheet, message_id):
+                    return "⚠️ Already Approved: This submission has already been verified by an officer."
+            except Exception as e:
+                # If Audit_Logs doesn't exist, continue without duplicate check
+                print(f"Warning: Could not access Audit_Logs: {e}")
+                audit_sheet = None
+        else:
+            audit_sheet = None
+            
     except Exception as e:
         return f"❌ Error accessing Sheet: {e}"
     
@@ -329,6 +365,10 @@ def award_quest_xp(client, master_sheet_id, discord_id, xp_amount):
             # Updates XP and Rank
             master.update_cell(row_num, 5, new_xp)
             master.update_cell(row_num, 6, new_rank)
+            
+            # Log to Audit_Logs if audit parameters are provided
+            if audit_sheet is not None and message_id is not None and officer_id is not None:
+                log_quest_approval(audit_sheet, message_id, officer_id, discord_id, xp_amount, reason or "Manual XP Award")
 
             return f"Added {xp_amount} XP! New Total: {new_xp} ({new_rank})"
             
