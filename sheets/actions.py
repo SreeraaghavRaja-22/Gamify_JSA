@@ -25,6 +25,31 @@ def calculate_rank(xp):
             return RANK_THRESHOLDS[threshold]
     return "Newcomer"
 
+def get_next_rank_info(xp):
+    # Returns the next rank threshold and name, or None if at max rank
+    sorted_thresholds = sorted(RANK_THRESHOLDS.keys())
+    for threshold in sorted_thresholds:
+        if xp < threshold:
+            return threshold, RANK_THRESHOLDS[threshold]
+    return None, None  # Already at max rank
+
+def generate_progress_bar(current_xp, current_threshold, next_threshold):
+    # Generates a 10-character ASCII progress bar
+    if next_threshold is None:
+        # Max rank - show full bar
+        return "[▰▰▰▰▰▰▰▰▰▰]"
+    
+    progress_range = next_threshold - current_threshold
+    progress_made = current_xp - current_threshold
+    progress_percentage = progress_made / progress_range if progress_range > 0 else 0
+    
+    filled = int(progress_percentage * 10)
+    filled = min(filled, 10)  # Cap at 10
+    empty = 10 - filled
+    
+    bar = "[" + "▰" * filled + "▱" * empty + "]"
+    return bar
+
 def get_id_from_url(url):
     # Extracts the long alphanumeric ID from a Google Sheet URL 
     try:
@@ -320,7 +345,34 @@ def get_xp(client, master_sheet_id, discord_id):
                 xp = 0
             
             rank = row.get("Rank", "Unknown")
-            return (f"Your rank is \"{rank}\" and you currently have {xp} XP!")
+            
+            # Calculate progress to next rank
+            sorted_thresholds = sorted(RANK_THRESHOLDS.keys())
+            current_threshold = 0
+            for threshold in sorted_thresholds:
+                if xp >= threshold:
+                    current_threshold = threshold
+                else:
+                    break
+            
+            next_threshold, next_rank_name = get_next_rank_info(xp)
+            
+            if next_threshold is None:
+                # At max rank
+                progress_bar = generate_progress_bar(xp, current_threshold, None)
+                return (
+                    f"Your rank is **{rank}** and you currently have **{xp} XP**!\n"
+                    f"Progress: {progress_bar}\n"
+                    f"🏆 **You've reached the maximum rank!**"
+                )
+            else:
+                xp_needed = next_threshold - xp
+                progress_bar = generate_progress_bar(xp, current_threshold, next_threshold)
+                return (
+                    f"Your rank is **{rank}** and you currently have **{xp} XP**!\n"
+                    f"Progress to **{next_rank_name}**: {progress_bar}\n"
+                    f"**{xp_needed} XP** needed to rank up!"
+                )
         
     return "Your Discord account was not found in JSA's XP system.\nPlease register using the join command (Ex: !join email@ufl.edu)."
 
