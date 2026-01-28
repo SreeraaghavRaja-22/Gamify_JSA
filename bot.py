@@ -373,7 +373,7 @@ async def claim_wordle(interaction: discord.Interaction, share_text: str):
         result = actions.award_quest_xp(client, config.SHEET_ID, interaction.user.id, config.WORDLE_XP)
         
         # Send the message that the XP has been rewarded
-        await interaction.followup.send(f"✅ Wordle {puzzle} completed. +{config.WORDLE_XP} XP\n{result}", ephemeral = True)
+        await interaction.followup.send(f"✅ Wordle {puzzle} completed. +{config.WORDLE_XP} XP\n{result}")
 
     except Exception as e: 
         # If something crashes after defer, you still need to followup 
