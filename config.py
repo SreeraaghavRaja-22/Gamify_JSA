@@ -24,3 +24,14 @@ APPROVE_EMOJI = "✅"
 INSTAGRAM = "https://www.instagram.com/uf_jsa/"
 LINKTREE = "https://linktr.ee/uf.jsa?utm_source=ig&utm_medium=social&utm_content=link_in_bio"
 CALENDAR = "https://calendar.google.com/calendar/u/0?cid=YmViZDVhYTNhYzFiMTEwOTIzZWUyZGM1NTkwZDg4ZjA1NTI2Njk1NDA3YzA0Yjk4YmIxMzU4YWIzZmEwYmYwZkBncm91cC5jYWxlbmRhci5nb29nbGUuY29t"
+
+# --- RANK CONFIGURATION ---
+RANK_THRESHOLDS = {
+    0: "Newcomer",
+    50: "Daiyo's Classmate",
+    150: "Daiyo's Friend",
+    300: "Daiyo's Pet",
+    500: "JSA Regular",
+    750: "JSA Otaku",
+    1050: "Honorary JSA Board"
+}
