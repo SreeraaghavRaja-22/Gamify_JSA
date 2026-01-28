@@ -207,8 +207,29 @@ async def post_specific_quest(interaction: discord.Interaction, type: str, name:
     else:
         await interaction.followup.send(f"❌ Error: Could not find a quest named '{name}' in the {type} sheet.")
 
+# Store the message ID for the access message
+ACCESS_MESSAGE_ID = 1465869081210261770 # Replace with your message ID after posting
+
 @bot.event
 async def on_raw_reaction_add(payload):
+    # Check if it's the access message
+    if payload.message_id == ACCESS_MESSAGE_ID and str(payload.emoji) == "✅":
+        guild = bot.get_guild(payload.guild_id)
+        member = guild.get_member(payload.user_id)
+        
+        if member and not member.bot:
+            role = guild.get_role(config.BATTLE_PASS_ROLE_ID)
+            if role and role not in member.roles:
+                try:
+                    await member.add_roles(role)
+                    try:
+                        await member.send("🎉 You now have access to the JSA Battle Pass channels!")
+                    except:
+                        pass  # Can't DM, that's okay
+                except Exception as e:
+                    print(f"Error assigning role: {e}")
+        return
+
     quest_channels = {
         config.DAILY_SUBMISSION_ID: ("Daily Quest Approval", config.DAILY_XP),
         config.WEEKLY_SUBMISSION_ID: ("Weekly Quest Approval", config.WEEKLY_XP)
