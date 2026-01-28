@@ -416,5 +416,9 @@ async def grant_access_all(interaction: discord.Interaction):
         ephemeral=True
     )
 
+# Adds celebratory notifications when a member ranks up
+@bot.event
+async rank_up
+
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)

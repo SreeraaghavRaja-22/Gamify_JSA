@@ -419,8 +419,15 @@ def award_quest_xp(client, master_sheet_id, discord_id, xp_amount, officer_id=No
             except:
                 current_xp = 0
             
+            # Store the old rank before updating
+            old_rank = calculate_rank(current_xp);
+            
+            # Calculate new rank and xp amount
             new_xp = current_xp + xp_amount
             new_rank = calculate_rank(new_xp)
+
+            # Check for Rank UP
+            is_rank_up = (new_rank != old_rank);
 
             # Updates XP and Rank
             master.update_cell(row_num, 5, new_xp)
@@ -430,7 +437,7 @@ def award_quest_xp(client, master_sheet_id, discord_id, xp_amount, officer_id=No
             if audit_sheet is not None and message_id is not None and officer_id is not None:
                 log_quest_approval(audit_sheet, message_id, officer_id, discord_id, xp_amount, reason or "Manual XP Award")
 
-            return f"Added {xp_amount} XP! New Total: {new_xp} ({new_rank})"
+            return {"message": f"Added {xp_amount} XP! New Total: {new_xp} ({new_rank})", "is_rank_up" : is_rank_up}
             
     return "❌ User not found in roster. Please use !join first."
 
