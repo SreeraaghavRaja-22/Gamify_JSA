@@ -171,21 +171,30 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
     # 4. Finds the Name Column in the Event Sheet
     name_col_name = find_name_column(event_records)
     
-    # 6. Creates a lookup directory for Master Roster for speed
-    # Format: {'email@ufl.edu': Row_Number}
-    # gspread is 1-indexed, and row 1 is headers. So data starts at row 2
+        # 6. Creates a lookup directory for Master Roster with current XP
+    # Format: {'email@ufl.edu': {'row_num': int, 'current_xp': int}}
     master_records = master_sheet.get_all_records()
     master_map = {}
     for i, row in enumerate(master_records):
-        # i starts at 0, represent row 2 (data) - actual row is i + 2
         email = str(row.get("Email", "")).strip().lower()
-        if email: 
-            master_map[email] = i + 2
+        if email:
+            try:
+                current_xp = int(row.get("Total_XP", 0))
+            except:
+                current_xp = 0
+            master_map[email] = {
+                'row_num': i + 2,  # Row number (1-indexed, row 1 is header)
+                'current_xp': current_xp
+            }
 
+    # 7. Collect all updates for batch processing
+    batch_updates = []  # List of {'range': 'E5:F5', 'values': [[xp, rank]]}
+    new_members = []    # List of [name, email, year, discord_id, xp, rank]
+    
     new_members_count = 0
     existing_members_count = 0
 
-    # 7. Process Attendees
+    # Process Attendees - collect updates, don't execute yet
     for row in event_records:
         attendee_email = str(row[email_col_name]).strip().lower()
         attendee_name = row.get(name_col_name, "Unknown") if name_col_name else "Unknown" 
@@ -195,33 +204,41 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
         if not attendee_email:
             continue
 
-        if attendee_email in master_map: 
+        if attendee_email in master_map:
             # Scenario A: The Regular (Update XP)
-            row_num = master_map[attendee_email]
-
-            # Get current XP (handle empty cells)
-            current_xp_cell = master_sheet.cell(row_num, 5).value # Column 5 is total XP
-            try: 
-                current_xp = int(current_xp_cell)
-            except: 
-                current_xp = 0
-
+            member_info = master_map[attendee_email]
+            row_num = member_info['row_num']
+            current_xp = member_info['current_xp']
+            
             new_xp = current_xp + xp_amount
             new_rank = calculate_rank(new_xp)
 
-            master_sheet.update_cell(row_num, 5, new_xp)
-            master_sheet.update_cell(row_num, 6, new_rank)
+            # Add to batch update list (columns E and F are 5 and 6)
+            batch_updates.append({
+                'range': f'E{row_num}:F{row_num}',
+                'values': [[new_xp, new_rank]]
+            })
+            
             existing_members_count += 1
             print(f"Updated {attendee_email}: {current_xp} -> {new_xp}")
 
         else:
             # Scenario B: The Newcomer (Auto-Enroll)
             new_row = [attendee_name, attendee_email, attendee_year, "", xp_amount, "Newcomer"]
-            master_sheet.append_row(new_row)
+            new_members.append(new_row)
             new_members_count += 1
             print(f"Added {attendee_email}!")
 
-    # 8. Log the transaction so it doesn't happen again
+    # 8. Execute batch operations
+    if batch_updates:
+        master_sheet.batch_update(batch_updates)
+        print(f"Batch updated {len(batch_updates)} existing members")
+    
+    if new_members:
+        master_sheet.append_rows(new_members)
+        print(f"Batch added {len(new_members)} new members")
+
+    # 9. Log the transaction so it doesn't happen again
     log_event_completion(log_sheet, event_id, xp_amount)
 
     return f"✅  Success! Processed Sheet ID {event_id[:5]}... Updated {existing_members_count} and added {new_members_count}."
