@@ -338,37 +338,51 @@ async def shota(interaction: discord.Interaction):
 # Claim_Wordle
 @bot.tree.command(name="claim_wordle", description="Claim XP for completing Wordle (paste the Wordle share text).", guild=GUILD_ID)
 async def claim_wordle(interaction: discord.Interaction, share_text: str):
-    # parse the share text
-    parsed = wordle_actions.parse_wordle_share(share_text)
 
-    if not parsed:
-        await interaction.response.send_message(
-        "I couldn't find a valid header. Paste the line that looks like: 'Wordle 1674 3/6' plus the grid.", ephemeral=True)
-        return
-    
-    # convert the parsed text to puzzle num and number of attempts
-    puzzle, attempts = parsed
+    try: 
+        # ACK immediately so we don't hit the 3s timeout 
+        await interaction.response.defer(ephemeral = True)
 
-    # Wordle must be completed
-    if attempts is None: 
-        await interaction.response.send_message("Looks like this was X/6 (not completed). No XP rewarded.", ephemeral = True) 
-        return
-    
-    client = get_client()
-    
-    # Prevents double claim error for the same puzzle
-    if actions.wordle_claim_exists(client, config.SHEET_ID, puzzle, interaction.user.id):
-        await interaction.response.send_message("You already claimed this Wordle.", ephemeral=True)
-        return
+        # parse the share text
+        parsed = wordle_actions.parse_wordle_share(share_text)
 
-    # Log first so we don't double award if an error occurs
-    actions.log_wordle_claim(client, config.SHEET_ID, puzzle, interaction.user.id)
+        if not parsed:
+            await interaction.followup.send(
+            "I couldn't find a valid header. Paste the line that looks like: 'Wordle 1674 3/6' plus the grid.", ephemeral=True)
+            return
+        
+        # convert the parsed text to puzzle num and number of attempts
+        puzzle, attempts = parsed
 
-    # Reward the user with WORDLE_XP XP
-    result = actions.award_quest_xp(client, config.SHEET_ID, interaction.user.id, config.WORDLE_XP)
+        # Wordle must be completed
+        if attempts is None: 
+            await interaction.followup.send("Looks like this was X/6 (not completed). No XP rewarded.", ephemeral = True) 
+            return
+        
+        client = get_client()
+        
+        # Prevents double claim error for the same puzzle
+        if actions.wordle_claim_exists(client, config.SHEET_ID, puzzle, interaction.user.id):
+            await interaction.followup.send("You already claimed this Wordle.", ephemeral=True)
+            return
+
+        # Log first so we don't double award if an error occurs
+        actions.log_wordle_claim(client, config.SHEET_ID, puzzle, interaction.user.id)
+
+        # Reward the user with WORDLE_XP XP
+        result = actions.award_quest_xp(client, config.SHEET_ID, interaction.user.id, config.WORDLE_XP)
+        
+        # Send the message that the XP has been rewarded
+        await interaction.followup.send(f"✅ Wordle {puzzle} completed. +{config.WORDLE_XP} XP\n{result}")
+
+    except Exception as e: 
+        # If something crashes after defer, you still need to followup 
+        try:
+            await interaction.followup.send(f"❌ Error while processing Wordle claim {e}", ephemeral=True)
+        except:
+            pass
+        raise 
     
-    # Send the message that the XP has been rewarded
-    await interaction.response.send_message(f"✅ Wordle {puzzle} completed. +{config.WORDLE_XP} XP\n{result}", ephemeral = True)
 
 # command to add whether certain members are board members 
 @bot.tree.command(name="sync_board_members", description = "Sync the board member bool on master roster", guild=GUILD_ID)
