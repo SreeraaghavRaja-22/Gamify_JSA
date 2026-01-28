@@ -248,8 +248,7 @@ systemctl restart jsabot
 
 - [ ] Quest streak tracking with bonus XP
 - [ ] `/profile` command with detailed stats
-- [ ] Progress bar to next rank
-- [ ] Batch Google Sheets updates for better performance
+- [ ] Celebratory message for ranking up
 - [ ] GitHub Actions for automated deployment
 
 ---
