@@ -262,6 +262,23 @@ async def on_raw_reaction_add(payload):
 
     await channel.send(response_message)
 
+# Automatically give new members access to JSA Battle Pass
+@bot.event
+async def on_member_join(member):
+    """Automatically give new members access to JSA Battle Pass"""
+    if member.bot:
+        return
+    
+    guild = member.guild
+    role = guild.get_role(config.BATTLE_PASS_ROLE_ID)
+    
+    if role:
+        try:
+            await member.add_roles(role)
+            print(f"Auto-assigned Battle Pass role to {member.name}")
+        except Exception as e:
+            print(f"Error auto-assigning role to {member.name}: {e}")
+
 # Handles permission errors
 @bot.tree.error
 async def on_command_error(interaction: discord.Interaction, error):
@@ -342,6 +359,41 @@ async def sync_board_members(interaction: discord.Interaction):
     actions.check_if_board_member(client, config.SHEET_ID)
 
     await interaction.followup.send("🔄 Board member statuses synced.")
+
+# Grant Battle Pass access to all members (one-time use)
+@bot.tree.command(name="grant_access_all", description="Grant Battle Pass access to all existing members (officer only)", guild=GUILD_ID)
+@app_commands.checks.has_role(config.OFFICER_ROLE_ID)
+async def grant_access_all(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    
+    guild = interaction.guild
+    role = guild.get_role(config.BATTLE_PASS_ROLE_ID)
+    
+    if not role:
+        await interaction.followup.send("❌ Error: Battle Pass role not found. Check BATTLE_PASS_ROLE_ID in config.py", ephemeral=True)
+        return
+    
+    count = 0
+    errors = 0
+    
+    for member in guild.members:
+        # Skip bots and members who already have the role
+        if member.bot or role in member.roles:
+            continue
+        
+        try:
+            await member.add_roles(role)
+            count += 1
+        except Exception as e:
+            errors += 1
+            print(f"Error assigning role to {member.name}: {e}")
+    
+    await interaction.followup.send(
+        f"✅ **Access Granted!**\n"
+        f"Successfully granted access to **{count}** members.\n"
+        f"{f'⚠️ {errors} errors occurred.' if errors > 0 else ''}",
+        ephemeral=True
+    )
 
 # 4. Run the Bot
 bot.run(config.DISCORD_TOKEN)
