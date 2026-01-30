@@ -1,36 +1,27 @@
 import re 
 import gspread 
 import random
+import config
 from datetime import datetime
 
-# --- RANK CONFIGURATION ---
-RANK_THRESHOLDS = {
-    0: "Newcomer",
-    50: "Daiyo's Classmate",
-    150: "Daiyo's Friend",
-    300: "Daiyo's Pet",
-    500: "JSA Regular",
-    750: "JSA Otaku",
-    1050: "Honorary JSA Board"
-}
 
 # --- HEADER CONFIGURATION ---
 MASTER_HEADERS = ['Name', 'Email', 'Year', 'Discord_ID', 'Total_XP', 'Rank']
 
 def calculate_rank(xp):
     # Calculates the rank name based on XP thresholds.
-    sorted_thresholds = sorted(RANK_THRESHOLDS.keys(), reverse=True)
+    sorted_thresholds = sorted(config.RANK_THRESHOLDS.keys(), reverse=True)
     for threshold in sorted_thresholds:
         if xp >= threshold:
-            return RANK_THRESHOLDS[threshold]
+            return config.RANK_THRESHOLDS[threshold]
     return "Newcomer"
 
 def get_next_rank_info(xp):
     # Returns the next rank threshold and name, or None if at max rank
-    sorted_thresholds = sorted(RANK_THRESHOLDS.keys())
+    sorted_thresholds = sorted(config.RANK_THRESHOLDS.keys())
     for threshold in sorted_thresholds:
         if xp < threshold:
-            return threshold, RANK_THRESHOLDS[threshold]
+            return threshold, config.RANK_THRESHOLDS[threshold]
     return None, None  # Already at max rank
 
 def generate_progress_bar(current_xp, current_threshold, next_threshold):
@@ -364,7 +355,7 @@ def get_xp(client, master_sheet_id, discord_id):
             rank = row.get("Rank", "Unknown")
             
             # Calculate progress to next rank
-            sorted_thresholds = sorted(RANK_THRESHOLDS.keys())
+            sorted_thresholds = sorted(config.RANK_THRESHOLDS.keys())
             current_threshold = 0
             for threshold in sorted_thresholds:
                 if xp >= threshold:
