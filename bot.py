@@ -354,8 +354,8 @@ async def help(interaction: discord.Interaction):
     if(isofficer):
         descriptiontext +=  "\n"\
                             "### Officer Commands\n"\
-                            "`/process_event`: Adds attendance sheet url for event\n"
-    descriptiontext += "\n"
+                            "`/process_event`: Adds attendance sheet url for event"
+    descriptiontext += "\n\n"
     descriptiontext+="For any questions feel free to reach out to an officer."
     my_embed = discord.Embed(title="Battle Pass Help",
                                             description=descriptiontext)
