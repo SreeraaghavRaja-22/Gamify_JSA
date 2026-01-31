@@ -342,7 +342,7 @@ async def help(interaction: discord.Interaction):
                                             "### Important Commands\n"\
                                             "`/xp`: Use this in <#1465396884624380109> to display your current xp.\n"\
                                             "`/leaderboard`: Use this in <#1465396691636191407> to see the leaderboard of xp for board/regular members.\n"\
-                                            "`/claim_wordle`: Use this in <#1465413621382123662> to submit daily world for xp by pasting wordle result into the command.\n"\
+                                            "`/claim_wordle`: Use this in <#1465413621382123662> to submit daily wordle for xp by pasting wordle result into the command.\n"\
                                             "`/socials`: Lists JSA's socials.\n"\
                                             "`/shota`: Dedication to JSA's Founder Shota Konno.\n"\
                                             "### Quests\n"\
