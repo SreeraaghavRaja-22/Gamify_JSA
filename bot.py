@@ -40,24 +40,24 @@ GUILD_ID = discord.Object(id = config.GUILD_ID)
 # 3. Commands:
 
 # Processing Events
-@bot.tree.command(name="process_event", description="Adds attendance sheet url for certain event (only officers", guild=GUILD_ID)
+@bot.tree.command(name="process_event", description="Adds attendance sheet url for certain event (only officers)", guild=GUILD_ID)
 @app_commands.default_permissions()
 @app_commands.checks.has_role(config.OFFICER_ROLE_ID)
 async def process_event(interaction: discord.Interaction, sheet_url: str, xp_amount: int):
 
     await interaction.response.send_message(f"🔄 Processing event sheet... this might take a moment.")
-    
+
     # Get the google sheet client
     client = get_client()
-    
+
     # Run the logic from actions.py using SHEET_ID from config.py
     result_message = actions.process_event_data(
-        client = client, 
-        master_sheet_id = config.SHEET_ID, 
-        event_sheet_url = sheet_url, 
+        client = client,
+        master_sheet_id = config.SHEET_ID,
+        event_sheet_url = sheet_url,
         xp_amount = xp_amount
     )
-    
+
     await interaction.followup.send(result_message)
 
 # Join
@@ -78,10 +78,10 @@ async def join(interaction: discord.Interaction, email: str):
     app_commands.Choice(name="Board Members", value="board")
 ])
 async def leaderboard(interaction: discord.Interaction, type: str = "regular", top: int = 10):
-    await interaction.response.defer() 
-    
+    await interaction.response.defer()
+
     client = get_client()
-    
+
     result = actions.get_leaderboard(client, config.SHEET_ID, top, mode=type)
 
     await interaction.followup.send(result)
@@ -89,19 +89,19 @@ async def leaderboard(interaction: discord.Interaction, type: str = "regular", t
 # XP
 @bot.tree.command(name="xp", description="Prints out your total XP!", guild=GUILD_ID)
 async def xp(interaction: discord.Interaction):
-    
+
     client = get_client()
 
     result = actions.get_xp(client, config.SHEET_ID, str(interaction.user.id))
 
-    await interaction.response.send_message(result) 
+    await interaction.response.send_message(result)
 
 # Quests
 # Helper function to format the Quest into a nice Discord Embed
 def format_quest_embed(quest, category_name):
     is_weekly = category_name == "Weekly_Quests"
     xp = config.WEEKLY_XP if is_weekly else config.DAILY_XP
-    
+
     embed = discord.Embed(
         title=f"🏯 {quest['Quest Name']}",
         description=quest['Description'],
@@ -146,7 +146,7 @@ async def test_quest(interaction: discord.Interaction, type: str):
     await interaction.response.defer(ephemeral=True)
     client = get_client()
     quest = actions.get_random_quest(client, config.SHEET_ID, type) #
-    
+
     if quest:
         embed = format_quest_embed(quest, type)
         channel = bot.get_channel(config.QUEST_CHANNEL_ID)
@@ -170,7 +170,7 @@ async def refresh_quest(interaction: discord.Interaction, type: str):
     await interaction.response.defer(ephemeral=True)
     client = get_client()
     quest = actions.get_random_quest(client, config.SHEET_ID, type) #
-    
+
     if quest:
         channel = bot.get_channel(config.QUEST_CHANNEL_ID)
         if channel:
@@ -189,16 +189,16 @@ async def refresh_quest(interaction: discord.Interaction, type: str):
 @app_commands.checks.has_role(config.OFFICER_ROLE_ID)
 async def post_specific_quest(interaction: discord.Interaction, type: str, name: str):
     await interaction.response.defer(ephemeral=True)
-    
+
     client = get_client()
     quest = actions.get_specific_quest(client, config.SHEET_ID, type, name)
-    
+
     if quest:
         channel = bot.get_channel(config.QUEST_CHANNEL_ID)
         if channel:
             # Matches the exact wording from the automatic loops
             announcement_text = "☀️ **Today's Daily Quest is live!**" if type == "Daily_Quests" else "🔥 **A new Weekly Quest has appeared!**"
-            
+
             embed = format_quest_embed(quest, type)
             await channel.send(content=announcement_text, embed=embed)
             await interaction.followup.send(f"✅ Successfully posted '{name}' as the official quest.")
@@ -216,7 +216,7 @@ async def on_raw_reaction_add(payload):
     if payload.message_id == ACCESS_MESSAGE_ID and str(payload.emoji) == "✅":
         guild = bot.get_guild(payload.guild_id)
         member = guild.get_member(payload.user_id)
-        
+
         if member and not member.bot:
             role = guild.get_role(config.BATTLE_PASS_ROLE_ID)
             if role and role not in member.roles:
@@ -244,20 +244,20 @@ async def on_raw_reaction_add(payload):
     if member is None:
         member = await guild.fetch_member(payload.user_id)
 
-    # Verifies the officer role 
+    # Verifies the officer role
     if not any(role.name == config.OFFICER_ROLE for role in member.roles):
         return # If not an officer, ignore reaction
 
     # Process the Quest
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
-    
+
     if message.author.bot:
         return
 
     # Get quest type and XP amount
     reason, xp_to_give = quest_channels[payload.channel_id]
-    
+
     # Awards XP with audit logging (prevents double-dipping)
     client = get_client()
     result = actions.award_quest_xp(
@@ -269,12 +269,12 @@ async def on_raw_reaction_add(payload):
         message_id=str(payload.message_id),
         reason=reason
     )
-    
+
     # Check if this was a duplicate approval
     if "Already Approved" in result:
         # Silently ignore duplicate approvals (don't spam the channel)
         return
-    
+
     response_message = (
         f"⚔️ **Quest Accomplished!** 🏯\n"
         f"Hello {message.author.mention}! An officer has verified your submission.\n"
@@ -289,10 +289,10 @@ async def on_member_join(member):
     """Automatically give new members access to JSA Battle Pass"""
     if member.bot:
         return
-    
+
     guild = member.guild
     role = guild.get_role(config.BATTLE_PASS_ROLE_ID)
-    
+
     if role:
         try:
             await member.add_roles(role)
@@ -334,7 +334,32 @@ async def shota(interaction: discord.Interaction):
     "two Undokai events, several banquets, and many other events. His biggest hope is for JSA to grow and continue to " \
     "follow its mission to provide a safe space for anyone and everyone to learn about Japanese culture!"
     await interaction.response.send_message(response_message)
-
+# Help
+@bot.tree.command(name="help", description="Shows help info and lists bot commands.", guild=GUILD_ID)
+async def help(interaction: discord.Interaction):
+    descriptiontext ="JSA Battle Pass is a way for you to earn XP for participating in JSA Events.\n\n"\
+                                            "**Getting Started**: Use the `/join` command with your email in <#1465396884624380109>.\n"\
+                                            "### Important Commands\n"\
+                                            "`/xp`: Use this in <#1465396884624380109> to display your current xp.\n"\
+                                            "`/leaderboard`: Use this in <#1465396691636191407> to see the leaderboard of xp for board/regular members.\n"\
+                                            "`/claim_wordle`: Use this in <#1465413621382123662> to submit daily wordle for xp by pasting wordle result into the command.\n"\
+                                            "`/socials`: Lists JSA's socials.\n"\
+                                            "`/shota`: Dedication to JSA's Founder Shota Konno.\n"\
+                                            "### Quests\n"\
+                                            f"Daily/Weekly quests are posted in <#{config.QUEST_CHANNEL_ID}>.\n"\
+                                            f"Dailies can be submitted in <#{config.DAILY_SUBMISSION_ID}>.\n"\
+                                            f"Weeklies can be submitted in <#{config.WEEKLY_SUBMISSION_ID}>.\n"\
+                                            "Officers will manually check submissions and approve them with a :white_check_mark:."
+    isofficer = any(role.id == config.OFFICER_ROLE_ID for role in interaction.user.roles)
+    if(isofficer):
+        descriptiontext +=  "\n"\
+                            "### Officer Commands\n"\
+                            "`/process_event`: Adds attendance sheet url for event"
+    descriptiontext += "\n\n"
+    descriptiontext+="For any questions feel free to reach out to an officer."
+    my_embed = discord.Embed(title="Battle Pass Help",
+                                            description=descriptiontext)
+    await interaction.response.send_message(ephemeral = True,embed=my_embed)
 # Claim_Wordle
 @bot.tree.command(name="claim_wordle", description="Claim XP for completing Wordle (paste the Wordle share text).", guild=GUILD_ID)
 async def claim_wordle(interaction: discord.Interaction, share_text: str):
