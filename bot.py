@@ -174,9 +174,10 @@ async def refresh_quest(interaction: discord.Interaction, type: str):
     if quest:
         channel = bot.get_channel(config.QUEST_CHANNEL_ID)
         if channel:
-            prefix = "☀️ **Daily Quest Refreshed!**" if type == "Daily_Quests" else "🔥 **Weekly Quest Refreshed!**"
+            # Matches the exact wording from the automatic loops
+            announcement_text = "☀️ **Today's Daily Quest is live!**" if type == "Daily_Quests" else "🔥 **A new Weekly Quest has appeared!**"
             embed = format_quest_embed(quest, type)
-            await channel.send(content=f"{prefix}\n*Requested by {interaction.user.mention}*", embed=embed)
+            await channel.send(content=announcement_text, embed=embed)
             await interaction.followup.send(f"✅ Refreshed {type}!")
 
 # The /post_specific_quest
