@@ -414,7 +414,7 @@ async def claim_wordle(interaction: discord.Interaction, share_text: str):
 async def award_xp(interaction: discord.Interaction, user_mention: str, xp_amount: int, reason: str):
     #print(user_id[2:-1])
     client = get_client()
-    result = actions.grant_manual_xp(client,config.SHEET_ID,user_mention[2:-1],xp_amount,reason,interaction.user.id)
+    result = actions.grant_manual_xp(client,config.SHEET_ID,user_mention[2:-1],xp_amount,reason.title(),interaction.user.id)
     await interaction.response.send_message(result)
 # command to add whether certain members are board members 
 @bot.tree.command(name="sync_board_members", description = "Sync the board member bool on master roster", guild=GUILD_ID)
