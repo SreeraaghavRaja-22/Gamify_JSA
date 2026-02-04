@@ -138,7 +138,7 @@ async def leaderboard(interaction: discord.Interaction, type: str = "regular", t
 
         thismessage = makeentry(name,xp,rank,isboard,place,type)
         #this is an immediate check to see if we've somehow already hit that limit without going into tie strings which might somehow potentially be a problem later on if someone searches for like top 100
-        if(len(leaderboardentries+thismessage)>4096):
+        if(len(leaderboardentries+thismessage)>4000):
             break
         #this is the recursive check to see how many we can do next after we've already hit a huge string of ties
         if shown >= top:
