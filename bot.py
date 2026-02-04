@@ -101,7 +101,7 @@ async def leaderboard(interaction: discord.Interaction, type: str = "regular", t
         if place <= 3:
             placement_text += f"{s*6} {medal} {place}{suffix} | {nametext}\n"
             placement_text += f"{s*8} ★ {xp} XP ★\n"
-            placement_text += f"{s*8} {rank_name} (ง•̀o•́)ง \n\n"
+            placement_text += f"{s*6} {rank_name} (ง•̀o•́)ง \n\n"
         else:
             placement_text += f"{s*2} {medal} {place}) {nametext} ★ {xp} XP ★\n"
         return placement_text
@@ -112,7 +112,6 @@ async def leaderboard(interaction: discord.Interaction, type: str = "regular", t
             recursiverank = recursiveentry[2]
             recursiveboard = recursiveentry[3]
             newstring = makeentry(recursivename,recursivexp,recursiverank,recursiveboard,place,type)
-            print(recursivename)
 
             #96 free characters to not hit the limit might be excessive but needing 4000 characters in the first place is excessive
             if(len(currentstring+newstring)>4000):
@@ -147,8 +146,8 @@ async def leaderboard(interaction: discord.Interaction, type: str = "regular", t
             break
         leaderboardentries += thismessage
         shown +=1
-
-    leaderboard_embed = discord.Embed(title="🏆 JSA Leaderboard",description=leaderboardentries)
+    leaderboardentries += f"\n**╰━━━━━━ {s*7} 🏯 {s*7} ━━━━━━╯**"
+    leaderboard_embed = discord.Embed(title=f"╭━━━ {s*2} ⚔️ **JSA LEADERBOARD** ⚔️ {s*2} ━━━╮\n\n",description=leaderboardentries)
     await interaction.followup.send(embed=leaderboard_embed)
 
 # XP
