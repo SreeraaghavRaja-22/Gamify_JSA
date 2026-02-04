@@ -7,6 +7,7 @@ from datetime import datetime
 
 # --- HEADER CONFIGURATION ---
 MASTER_HEADERS = ['Name', 'Email', 'Year', 'Discord_ID', 'Total_XP', 'Rank']
+AUDIT_HEADERS = ['Message_ID','Timestamp','Officer_ID','Recipient_ID','XP_Amount','Reason']
 
 def calculate_rank(xp):
     # Calculates the rank name based on XP thresholds.
@@ -105,6 +106,24 @@ def is_quest_processed(audit_sheet, message_id):
         return str(message_id) in processed_ids
     except:
         return False
+def is_manual_xp_given(audit_sheet,recipient_id, xp,reason,timestamp):
+    try:
+        records = audit_sheet.get_all_records(expected_headers=AUDIT_HEADERS)
+        for i, row in enumerate(records):
+            table_recipient_id = str(row.get("Recipient_ID", 0))
+            table_xp = int(row.get("XP_Amount",0))
+            table_reason = str(row.get("Reason",""))
+            table_timestamp = str(row.get("Timestamp","0000-00-00"))[:10]
+            if(table_recipient_id  == recipient_id and table_xp == xp and table_reason == reason and table_timestamp == timestamp):
+                return True
+        return False
+
+
+    except:
+        return False
+
+
+
 
 def log_quest_approval(audit_sheet, message_id, officer_id, recipient_id, xp_amount, reason):
     # Logs the quest approval to Audit_Logs for transparency and tracking
@@ -519,6 +538,45 @@ def log_wordle_claim(client, master_sheet_id, puzzle, discord_id):
     # logs the wordle claim 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     wordle_sheet.append_row([str(puzzle), str(discord_id), timestamp], value_input_option = "RAW")
+#logs manual xp to audit log
+def grant_manual_xp(client,master_sheet_id,recipient_id,xp_amount,reason,officer_id):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        sheet = client.open_by_key(master_sheet_id)
+
+        master = sheet.worksheet("Master_Roster")
+        records = master.get_all_records(expected_headers=MASTER_HEADERS)
+        try:
+            audit_sheet = sheet.worksheet("Audit_Logs")
+
+            if not(is_manual_xp_given(audit_sheet,recipient_id,xp_amount,reason,timestamp[:10])):
+                log_quest_approval(audit_sheet,-1,officer_id,recipient_id,xp_amount,reason)
+            else:
+                return f"⚠️ Already Approved: XP has already been granted to this user for {reason}."
+        except Exception as e:
+            print(f"Warning: Could not access Audit_logs: {e}")
+            audit_sheet = None
+
+    except Exception as e:
+        return f"❌ Error accessing Sheet: {e}"
+    for i, row in enumerate(records):
+
+        if str(row.get("Discord_ID","")).strip() == str(recipient_id):
+            row_num = i+2
+            try:
+                current_xp = int(row.get("Total_XP",0))
+            except:
+                current_xp = 0
+
+            new_xp = current_xp + xp_amount
+            new_rank = calculate_rank(new_xp)
+
+            master.update_cell(row_num,5,new_xp)
+            master.update_cell(row_num,6,new_rank)
+            return f"Added {xp_amount} XP to <@{recipient_id}> for {reason}."
+
+
 
 # compares the two sheets and checks if the member is a board member, if so, add y/n to board member column
 def check_if_board_member(client, master_sheet_id):
