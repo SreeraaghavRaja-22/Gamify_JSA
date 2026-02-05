@@ -308,54 +308,16 @@ def get_leaderboard(client, master_sheet_id, top=10, mode="regular"):
             continue
         if mode == "board" and not is_board:
             continue
+
         
         try:
             xp = int(xp_val)
         except:
             xp = 0
-        leaderboard_data.append((name, xp, rank_name))
+        leaderboard_data.append((name, xp, rank_name,is_board))
 
     leaderboard_data.sort(key=lambda x: x[1], reverse=True)
-
-    # Using Hangul Filler (\u3164) for alignment 
-    s = "\u3164" 
-
-    # Header
-    message = f"╭━━━ {s*2} ⚔️ **JSA LEADERBOARD** ⚔️ {s*2} ━━━╮\n\n"
-    
-    last_xp = None
-    shown = 0
-
-    for index, (name, xp, rank_name) in enumerate(leaderboard_data):
-        if xp != last_xp:
-            place = index + 1
-            last_xp = xp
-
-        medal = "🥇" if place == 1 else "🥈" if place == 2 else "🥉" if place == 3 else "⭐"
-        suffix = "st" if place == 1 else "nd" if place == 2 else "rd" if place == 3 else ")"
-        
-        if place <= 3:
-            message += f"{s*6} {medal} {place}{suffix} | {name}\n"
-            message += f"{s*8} ★ {xp} XP ★\n"
-            message += f"{s*8} {rank_name} (ง•̀o•́)ง \n\n"
-        else:
-            message += f"{s*4} {medal} {place}) {name} ★ {xp} XP ★\n"
-        
-        shown += 1
-
-        # WARNING: If too many people have the same XP, the message will break 2000 characters.
-        if shown >= top:
-            if index + 1 < len(leaderboard_data) and leaderboard_data[index + 1][1] == xp:
-                # Limits to 20 people to prevent the message from failing 
-                if shown > 20: 
-                    message += f"{s*3} ... and more tied with {xp} XP ...\n"
-                    break
-                continue
-            break
-
-    message += f"\n╰━━━━━━ {s*6} 🏯 {s*6} ━━━━━━╯"
-
-    return message
+    return leaderboard_data
 
 def get_xp(client, master_sheet_id, discord_id):
     discord_id = str(discord_id).strip()
