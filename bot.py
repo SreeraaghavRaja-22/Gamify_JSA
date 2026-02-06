@@ -7,6 +7,9 @@ import config
 from sheets.client import get_client
 from sheets import actions
 from wordle import wordle_actions
+from zoneinfo import ZoneInfo
+import datetime
+import time
 
 # 1. Setup Intents 
 intents = discord.Intents.default()
@@ -25,6 +28,9 @@ class Client(commands.Bot):
         if not weekly_quest_loop.is_running():
             weekly_quest_loop.start()
             print("Weekly quest loop started.")
+        if not reminder_announcement_loop.is_running():
+            reminder_announcement_loop.start()
+            print("Reminder announcement loop started.")
 
         try:
             # Syncing commands to the specific guild for instant updates
@@ -75,7 +81,8 @@ async def join(interaction: discord.Interaction, email: str):
 @app_commands.describe(type="Choose between Regular or Board members")
 @app_commands.choices(type=[
     app_commands.Choice(name="Regular Members", value="regular"),
-    app_commands.Choice(name="Board Members", value="board")
+    app_commands.Choice(name="Board Members", value="board"),
+    app_commands.Choice(name="All Members", value = "all")
 ])
 async def leaderboard(interaction: discord.Interaction, type: str = "regular", top: int = 10):
     await interaction.response.defer()
@@ -83,8 +90,71 @@ async def leaderboard(interaction: discord.Interaction, type: str = "regular", t
     client = get_client()
 
     result = actions.get_leaderboard(client, config.SHEET_ID, top, mode=type)
+    place = 0
+    shown = 0
+    leaderboardentries = ""
+    lastxp = -1
+    s = "\u3164"
+    def makeentry(name,xp,rank_name,isboard,place,type):
+        placement_text = ""
+        nametext = name
+        if(type == "all" and isboard == True):
+            nametext = "**[Board]** " + nametext
+        #placement_text += f"{name} — {xp} ({rank_name})\n"
+        medal = "🥇" if place == 1 else "🥈" if place == 2 else "🥉" if place == 3 else "⭐"
+        suffix = "st" if place == 1 else "nd" if place == 2 else "rd" if place == 3 else ")"
 
-    await interaction.followup.send(result)
+        if place <= 3:
+            placement_text += f"{s*6} {medal} {place}{suffix} | {nametext}\n"
+            placement_text += f"{s*8} ★ {xp} XP ★\n"
+            placement_text += f"{s*6} {rank_name} (ง•̀o•́)ง \n\n"
+        else:
+            placement_text += f"{s*2} {medal} {place}) {nametext} ★ {xp} XP ★\n"
+        return placement_text
+    def checkNextIndexes(currentxp, currentstring, currentindex,maxindex,place):
+            recursiveentry = result[currentindex]
+            recursivename = recursiveentry[0]
+            recursivexp = recursiveentry[1]
+            recursiverank = recursiveentry[2]
+            recursiveboard = recursiveentry[3]
+            newstring = makeentry(recursivename,recursivexp,recursiverank,recursiveboard,place,type)
+
+            #96 free characters to not hit the limit might be excessive but needing 4000 characters in the first place is excessive
+            if(len(currentstring+newstring)>4000):
+                recursivenextentry = result[currentindex+1]
+                recursivenextxp = recursivenextentry[1]
+                if(recursivenextxp == recursivexp):
+                    return f"\n{s*3} ... and more tied with {xp} XP ...\n"
+                else:
+                    return ""
+            if(currentindex == maxindex):
+                return newstring
+            if(currentxp != recursivexp):
+                return ""
+            return newstring + checkNextIndexes(recursivexp,currentstring+newstring,currentindex+1,maxindex,place)
+    for index, (name, xp, rank_name,is_board) in enumerate(result):
+        if xp != lastxp:
+            place = index + 1
+            lastxp = xp
+        entry = result[index]
+        name = entry[0]
+        xp = entry[1]
+        rank = entry[2]
+        isboard = entry[3]
+
+        thismessage = makeentry(name,xp,rank,isboard,place,type)
+        #this is an immediate check to see if we've somehow already hit that limit without going into tie strings which might somehow potentially be a problem later on if someone searches for like top 100
+        if(len(leaderboardentries+thismessage)>4000):
+            break
+        #this is the recursive check to see how many we can do next after we've already hit a huge string of ties
+        if shown >= top:
+            leaderboardentries += checkNextIndexes(xp,leaderboardentries+thismessage,index-1,len(result),place)
+            break
+        leaderboardentries += thismessage
+        shown +=1
+    leaderboardentries += f"\n**╰━━━━━━ {s*7} 🏯 {s*7} ━━━━━━╯**"
+    leaderboard_embed = discord.Embed(title=f"╭━━━ {s*2} ⚔️ **JSA LEADERBOARD** ⚔️ {s*2} ━━━╮\n\n",description=leaderboardentries)
+    await interaction.followup.send(embed=leaderboard_embed)
 
 # XP
 @bot.tree.command(name="xp", description="Prints out your total XP!", guild=GUILD_ID)
@@ -132,6 +202,19 @@ async def weekly_quest_loop():
         quest = actions.get_random_quest(client, config.SHEET_ID, "Weekly_Quests")
         if quest:
             await channel.send("🔥 **A new Weekly Quest has appeared!**", embed=format_quest_embed(quest, "Weekly_Quests"))
+#Task for Reminder Announcements
+@tasks.loop(minutes=1)
+async def reminder_announcement_loop():
+    client = get_client()
+    currentDateTime = datetime.datetime.now(tz=ZoneInfo('America/New_York'))
+    currentDateTime = currentDateTime.replace(second=0,microsecond=0)
+    result = actions.get_reminders(client,config.SHEET_ID,currentDateTime)
+    if(result != None):
+        message = result[0]
+        channel = result[1]
+        channel = int(channel.strip('<#>'))
+        channelToSend = bot.get_channel(channel)
+        await channelToSend.send(message)
 
 
 # The /test_quest command
@@ -365,8 +448,8 @@ async def help(interaction: discord.Interaction):
 @bot.tree.command(name="claim_wordle", description="Claim XP for completing Wordle (paste the Wordle share text).", guild=GUILD_ID)
 async def claim_wordle(interaction: discord.Interaction, share_text: str):
 
-    try: 
-        # ACK immediately so we don't hit the 3s timeout 
+    try:
+        # ACK immediately so we don't hit the 3s timeout
         await interaction.response.defer(ephemeral = True)
 
         # parse the share text
@@ -376,17 +459,17 @@ async def claim_wordle(interaction: discord.Interaction, share_text: str):
             await interaction.followup.send(
             "I couldn't find a valid header. Paste the line that looks like: 'Wordle 1674 3/6' plus the grid.", ephemeral=True)
             return
-        
+
         # convert the parsed text to puzzle num and number of attempts
         puzzle, attempts = parsed
 
         # Wordle must be completed
-        if attempts is None: 
-            await interaction.followup.send("Looks like this was X/6 (not completed). No XP rewarded.", ephemeral = True) 
+        if attempts is None:
+            await interaction.followup.send("Looks like this was X/6 (not completed). No XP rewarded.", ephemeral = True)
             return
-        
+
         client = get_client()
-        
+
         # Prevents double claim error for the same puzzle
         if actions.wordle_claim_exists(client, config.SHEET_ID, puzzle, interaction.user.id):
             await interaction.followup.send("You already claimed this Wordle.", ephemeral=True)
@@ -397,18 +480,18 @@ async def claim_wordle(interaction: discord.Interaction, share_text: str):
 
         # Reward the user with WORDLE_XP XP
         result = actions.award_quest_xp(client, config.SHEET_ID, interaction.user.id, config.WORDLE_XP)
-        
+
         # Send the message that the XP has been rewarded
         await interaction.followup.send(f"✅ Wordle {puzzle} completed. +{config.WORDLE_XP} XP\n{result}")
 
-    except Exception as e: 
-        # If something crashes after defer, you still need to followup 
+    except Exception as e:
+        # If something crashes after defer, you still need to followup
         try:
             await interaction.followup.send(f"❌ Error while processing Wordle claim {e}", ephemeral=True)
         except:
             pass
-        raise 
-
+        raise
+#command to award xp
 @bot.tree.command(name = "award_xp", description = "Manually grant xp to a user.",guild=GUILD_ID)
 @app_commands.checks.has_role(config.OFFICER_ROLE_ID)
 async def award_xp(interaction: discord.Interaction, user_mention: str, xp_amount: int, reason: str):
@@ -416,7 +499,47 @@ async def award_xp(interaction: discord.Interaction, user_mention: str, xp_amoun
     client = get_client()
     result = actions.grant_manual_xp(client,config.SHEET_ID,user_mention[2:-1],xp_amount,reason.title(),interaction.user.id)
     await interaction.response.send_message(result)
-# command to add whether certain members are board members 
+
+#command for officers to schedule events
+#Timezone is EST so (GMT-05:00)
+class ReminderModal(discord.ui.Modal,title='Event Message'):
+    message_input = discord.ui.TextInput(
+        label='Announcement!!!',
+        style=discord.TextStyle.paragraph,
+        placeholder='paste announcement here',
+        required=True
+
+    )
+    def __init__(self,_date,_channel,_name):
+        super().__init__()
+        self.name = _name
+        self.date = _date
+        self.channel = _channel
+
+    async def on_submit(self,interaction:discord.Interaction):
+        user_message = self.message_input.value
+        client = get_client()
+        announcementid = actions.log_announcement(client,config.SHEET_ID,self.channel,user_message,self.date,interaction.user.name)
+        await interaction.response.send_message(f"Scheduled announcement \"{self.name}\" with id {announcementid}.")
+@bot.tree.command(name = "schedule_event_reminder", description="Schedule an event to be reminded for 24 hours before the event.",guild=GUILD_ID)
+@app_commands.describe(
+    date="YYYY-MM-DD HH:MM"
+)
+@app_commands.checks.has_role(config.OFFICER_ROLE_ID)
+async def schedule_event_reminder(interaction:discord.Interaction,name: str,date: str, channel: str):
+    format_string = '%Y-%m-%d %H:%M'
+    client = get_client()
+    #announcementmessage = actions.log_announcement(client,config.SHEET_ID,channel,message,date,interaction.user.name)
+    #print(announcementmessage)
+    #await interaction.response.send_message(announcementmessage)
+    await interaction.response.send_modal(ReminderModal(date,channel, name))
+@bot.tree.command(name = "cancel_event_reminder",description="Cancel an event that has been scheduled.",guild=GUILD_ID)
+@app_commands.checks.has_role(config.OFFICER_ROLE_ID)
+async def cancel_event_reminder(interaction:discord.Interaction,id: int):
+    client = get_client()
+    numcancelled = actions.cancel_reminder_by_id(client,config.SHEET_ID,id)
+    await interaction.response.send_message(f"{numcancelled} events were cancelled.")
+# command to add whether certain members are board members
 @bot.tree.command(name="sync_board_members", description = "Sync the board member bool on master roster", guild=GUILD_ID)
 @app_commands.checks.has_role(config.OFFICER_ROLE_ID)
 async def sync_board_members(interaction: discord.Interaction):

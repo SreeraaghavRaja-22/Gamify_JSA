@@ -2,12 +2,14 @@ import re
 import gspread 
 import random
 import config
-from datetime import datetime
+from datetime import datetime,timedelta
+from zoneinfo import ZoneInfo
 
 
 # --- HEADER CONFIGURATION ---
 MASTER_HEADERS = ['Name', 'Email', 'Year', 'Discord_ID', 'Total_XP', 'Rank']
 AUDIT_HEADERS = ['Message_ID','Timestamp','Officer_ID','Recipient_ID','XP_Amount','Reason']
+REMINDER_HEADERS = ['Reminder_ID','Event_Start_Timestamp','Reminder_Timestamp','Channel_ID','Message_Text']
 
 def calculate_rank(xp):
     # Calculates the rank name based on XP thresholds.
@@ -97,7 +99,29 @@ def log_event_completion(log_sheet, event_id, xp_amount):
     # Writes the receipt to Attendance_Logs so we don't process it again 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_sheet.append_row([event_id, timestamp, xp_amount])
-
+def log_announcement(client,master_sheet_id,channel,message,time,announcement_creator):
+    #Reminder_ID will just be last id +1
+    #Event_Start_Time just gonna be the time
+    #Reminder_Timestamp is going to always be the stripped time -24 hours which could potentially be solved doing -86400 in unix time
+    #Channel_ID is just channel
+    #message text is just message
+    #Created_By is just announcement_creator
+    #Created_At is just timestamp
+    #Status is just always going to be Scheduled at the beginning
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timereminder =(datetime.strptime(time,"%Y-%m-%d %H:%M").astimezone(tz=ZoneInfo("America/New_York"))-timedelta(days=1)).isoformat()
+    isotime=datetime.strptime(time,"%Y-%m-%d %H:%M").astimezone(tz=ZoneInfo("America/New_York")).isoformat()
+    master_wb = client.open_by_key(master_sheet_id)
+    event_reminders = master_wb.worksheet("Event_Reminders")
+    id_column = event_reminders.col_values(1)
+    last_id = id_column[-1]
+    try:
+        last_id = int(last_id)
+    except ValueError:
+        last_id=0
+    event_reminders.append_row([last_id+1,isotime,timereminder,channel,message,str(announcement_creator),timestamp,"Scheduled"])
+    return last_id+1
+    pass
 def is_quest_processed(audit_sheet, message_id):
     # Checks if the message_id already exists in Column A of Audit_Logs
     # Prevents double-dipping when multiple officers react to the same submission
@@ -290,7 +314,40 @@ def get_join(client, master_sheet_id, email, discord_id):
     ]
     master.append_row(new_row)
     return "🎉 **Welcome aboard!** You've been successfully registered in the JSA XP system. Time to start earning! 🚀"
-
+#get events and
+def get_reminders(client,master_sheet_id,expectedTime):
+    sheet = client.open_by_key(master_sheet_id)
+    event_reminders = sheet.worksheet("Event_Reminders")
+    records = event_reminders.get_all_records(expected_headers=REMINDER_HEADERS)
+    for index, row in enumerate(records):
+        status=str(row.get("Status"))
+        if(status != "Scheduled"):
+            continue
+        rowStartTime = str(row.get("Reminder_Timestamp"))
+        rowStartTime = datetime.fromisoformat(rowStartTime)
+        if(expectedTime==rowStartTime):
+            message = str(row.get("Message_Text"))
+            channel = str(row.get("Channel_ID"))
+            event_reminders.update_cell(index+2,8,'Sent')
+            return [message,channel]
+    return None
+def cancel_reminder_by_id(client,master_sheet_id,id):
+    sheet = client.open_by_key(master_sheet_id)
+    event_reminders=sheet.worksheet("Event_Reminders")
+    records=event_reminders.get_all_records(expected_headers=REMINDER_HEADERS)
+    numcleared = 0
+    for index, row in enumerate(records):
+        status = str(row.get("Status"))
+        if(status != "Scheduled"):
+            continue
+        try:
+            row_id = int(row.get("Reminder_ID"))
+            if(row_id == id):
+                numcleared +=1
+                event_reminders.update_cell(index+2,8,'Cancelled')
+        except:
+            continue
+    return numcleared
 def get_leaderboard(client, master_sheet_id, top=10, mode="regular"):
     sheet = client.open_by_key(master_sheet_id)
     master = sheet.worksheet("Master_Roster")
