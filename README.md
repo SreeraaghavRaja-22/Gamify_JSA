@@ -140,11 +140,12 @@ Officers can easily process event attendance through Google Sheets integration, 
    | Worksheet | Purpose |
    |-----------|---------|
    | `Master_Roster` | Member data (Name, Email, Year, Discord_ID, Total_XP, Rank, Board_Member) |
-   | `Attendance_Logs` | Tracks processed event sheets |
+   | `Attendance_Logs` | Tracks processed event sheets (Event_ID, Timestamp, XP_Amount) |
+   | `Audit_Logs` | Quest approvals and manual XP (Message_ID, Timestamp, Officer_ID, Recipient_ID, XP_Amount, Reason) |
    | `Daily_Quests` | Quest Name, Description, Objective, Verification Method, Last_Used |
    | `Weekly_Quests` | Same structure as Daily_Quests |
-   | `Wordle_Claims` | Tracks claimed Wordle puzzles |
-   | `Board_Roster` | List of board member emails |
+   | `Wordle_Claims` | Puzzle number, Discord_ID, Timestamp — prevents double claims |
+   | `Board_Roster` | List of board member emails (used by `sync_board_members`) |
 
 7. Run the bot:
 
@@ -162,20 +163,23 @@ Officers can easily process event attendance through Google Sheets integration, 
 |---------|-------------|
 | `/join <email>` | Register your Discord account with the JSA XP system |
 | `/xp` | Check your current XP and rank |
-| `/leaderboard [type] [top]` | View the leaderboard (regular or board members) |
-| `/claim_wordle <share_text>` | Claim XP for completing Wordle |
-| `/socials` | Get links to JSA social media |
+| `/leaderboard [type] [top]` | View the leaderboard (regular, board, or all members) |
+| `/claim_wordle <share_text>` | Claim XP for completing Wordle (paste share text) |
+| `/socials` | Get links to JSA social media (Instagram, Linktree, Calendar) |
 | `/shota` | Learn about JSA's founder |
+| `/help` | Show help info and list commands (officers see extra officer commands) |
 
 ### Officer Commands
 
 | Command | Description |
 |---------|-------------|
-| `/process_event <sheet_url> <xp_amount>` | Process an attendance sheet and award XP |
-| `/test_quest <type>` | Test a quest announcement |
-| `/refresh_quest <type>` | Force a new quest announcement |
-| `/post_specific_quest <type> <name>` | Post a specific quest by name |
-| `/sync_board_members` | Sync board member status from Board_Roster |
+| `/process_event <sheet_url> <xp_amount>` | Process an attendance sheet and award XP to attendees |
+| `/test_quest <type>` | Post a test quest announcement to the quest channel |
+| `/refresh_quest <type>` | Force a new daily or weekly quest announcement |
+| `/post_specific_quest <type> <name>` | Post a specific quest by exact name from the sheet |
+| `/award_xp <user> <xp_amount> <reason>` | Manually grant XP to a user (logged to Audit_Logs) |
+| `/sync_board_members` | Sync Board_Member column from Board_Roster |
+| `/grant_access_all` | Grant Battle Pass role to all current members (one-time use) |
 
 ---
 
@@ -183,17 +187,32 @@ Officers can easily process event attendance through Google Sheets integration, 
 
 ```
 Gamify_JSA/
-├── bot.py                # Main Discord bot with commands and event handlers
+├── bot.py                # Main Discord bot: commands, quest loops, reaction handlers
 ├── config.py             # Configuration and environment variables
 ├── requirements.txt      # Python dependencies
 ├── credentials.json      # Google Cloud service account (not in repo)
 ├── .env                  # Environment variables (not in repo)
 ├── sheets/
-│   ├── client.py         # Google Sheets authentication
-│   └── actions.py        # Sheet operations (XP, leaderboards, quests)
+│   ├── client.py         # Google Sheets authentication (get_client)
+│   └── actions.py        # Sheet operations (see below)
 └── wordle/
     └── wordle_actions.py # Wordle share text parsing
 ```
+
+### Sheet operations (`sheets/actions.py`)
+
+| Function | Purpose |
+|----------|---------|
+| `calculate_rank`, `get_next_rank_info`, `generate_progress_bar` | Rank and XP progress display |
+| `get_id_from_url`, `find_email_column`, `find_name_column` | Event sheet parsing |
+| `is_event_processed`, `log_event_completion` | Event processing idempotency |
+| `is_quest_processed`, `log_quest_approval`, `is_manual_xp_given` | Audit and duplicate prevention |
+| `process_event_data` | Process attendance sheet, award XP, auto-enroll new attendees |
+| `get_join`, `get_leaderboard`, `get_xp` | Member lookup and display |
+| `award_quest_xp`, `grant_manual_xp` | Award XP (quest approval and manual) |
+| `get_random_quest`, `get_specific_quest` | Quest selection from Daily_Quests / Weekly_Quests |
+| `wordle_claim_exists`, `log_wordle_claim` | Wordle claim tracking |
+| `check_if_board_member` | Sync Board_Member from Board_Roster |
 
 ---
 
@@ -246,10 +265,16 @@ systemctl restart jsabot
 
 ## Future Roadmap
 
+### Features
 - [ ] Quest streak tracking with bonus XP
 - [ ] `/profile` command with detailed stats
 - [ ] Celebratory message for ranking up
 - [ ] GitHub Actions for automated deployment
+
+### Things to improve
+- [ ] **Quest scheduling** — Use time-based scheduling (e.g. 8:00 AM Eastern daily, Monday 8:00 AM weekly) so quests don’t re-post on bot restart and timing is consistent.
+- [ ] **Quest repetition** — Add a cooldown (e.g. 7 days for daily, 4 weeks for weekly) so the same quest doesn’t appear 2–3 times in a week; prefer least-recently-used when the pool is small.
+- [ ] **Unit tests** — Add pytest tests for `sheets/actions.py` (rank/progress helpers, `get_id_from_url`, quest selection with mocks) and optionally CI (e.g. GitHub Actions) to run them.
 
 ---
 
