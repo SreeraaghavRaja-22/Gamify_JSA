@@ -7,7 +7,8 @@ import config
 from sheets.client import get_client
 from sheets import actions
 from wordle import wordle_actions
-
+import datetime
+from zoneinfo import ZoneInfo
 # 1. Setup Intents 
 intents = discord.Intents.default()
 intents.message_content = True # Allows bot to read commands
@@ -22,9 +23,6 @@ class Client(commands.Bot):
         if not daily_quest_loop.is_running():
             daily_quest_loop.start()
             print("Daily quest loop started.")
-        if not weekly_quest_loop.is_running():
-            weekly_quest_loop.start()
-            print("Weekly quest loop started.")
 
         try:
             # Syncing commands to the specific guild for instant updates
@@ -178,7 +176,8 @@ def format_quest_embed(quest, category_name):
     return embed
 
 # Task for Daily Quests (Runs every 24 hours)
-@tasks.loop(hours=24)
+day_of_week = datetime.datetime.weekday(datetime.date.today())
+@tasks.loop(time=datetime.time(hour=16, minute=8, tzinfo=ZoneInfo('America/New_York')))
 async def daily_quest_loop():
     channel = bot.get_channel(config.QUEST_CHANNEL_ID)
     if channel:
@@ -186,16 +185,13 @@ async def daily_quest_loop():
         quest = actions.get_random_quest(client, config.SHEET_ID, "Daily_Quests")
         if quest:
             await channel.send("☀️ **Today's Daily Quest is live!**", embed=format_quest_embed(quest, "Daily_Quests"))
-
-# Task for Weekly Quests (Runs every 168 hours)
-@tasks.loop(hours=168)
-async def weekly_quest_loop():
-    channel = bot.get_channel(config.QUEST_CHANNEL_ID)
-    if channel:
-        client = get_client()
-        quest = actions.get_random_quest(client, config.SHEET_ID, "Weekly_Quests")
-        if quest:
-            await channel.send("🔥 **A new Weekly Quest has appeared!**", embed=format_quest_embed(quest, "Weekly_Quests"))
+        #after the daily we check weekly
+        day_of_week = datetime.datetime.weekday(datetime.date.today())
+        #days are 0(monday)-6(sunday)
+        if(day_of_week == 0):
+            quest = actions.get_random_quest(client, config.SHEET_ID, "Weekly_Quests")
+            if quest:
+                await channel.send("🔥 **A new Weekly Quest has appeared!**", embed=format_quest_embed(quest, "Weekly_Quests"))
 
 
 # The /test_quest command
