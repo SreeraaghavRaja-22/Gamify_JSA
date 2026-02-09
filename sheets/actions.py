@@ -1,6 +1,7 @@
 import re 
 import gspread 
 import random
+import math
 import config
 from datetime import datetime
 
@@ -438,11 +439,23 @@ def get_random_quest(client, master_sheet_id, sheet_name):
             indexed_records.append({"data": r, "row_num": i + 2})
 
         indexed_records.sort(key=lambda x: str(x["data"].get("Last_Used", "")), reverse=True)
-
-        # Exclude the most recently used quest if there is more than one
-        pool = indexed_records[1:] if len(indexed_records) > 1 else indexed_records
-        selection = random.choice(pool)
-
+        quest_cooldown = config.DAILY_QUEST_COOLDOWN
+        if(sheet_name == "Weekly_Quests"):
+            quest_cooldown = config.WEEKLY_QUEST_COOLDOWN
+        # Exclude the last 7(daily quest cooldown) recently used quests
+        pool = indexed_records[quest_cooldown:] if len(indexed_records) > 1 else indexed_records
+        #here we're going to create weights, the formula we use is going to be ln(i+1)^2
+        #this is so that quests that haven't shown up in a long time have a drastically higher chance of showing up
+        #basically the higher the distribution constant is, the less skewed the weights
+        distributionConstant = 7
+        weights = []
+        for i in range(len(pool)):
+            weights.append(math.log(i+distributionConstant)**2)
+        summedweights = sum(weights)
+        #here we normalize the weights so it's easy to understand but this could be removed
+        for i in range(len(pool)):
+            weights[i] = (weights[i]/summedweights)
+        selection = random.choices(pool,weights=weights,k=1)[0]
         # Update the timestamp in the sheet
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         worksheet.update_cell(selection["row_num"], last_used_col_idx, now_str)
