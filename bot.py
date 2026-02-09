@@ -176,7 +176,6 @@ def format_quest_embed(quest, category_name):
     return embed
 
 # Task for Daily Quests (Runs every 24 hours)
-day_of_week = datetime.datetime.weekday(datetime.date.today())
 @tasks.loop(time=datetime.time(hour=16, minute=8, tzinfo=ZoneInfo('America/New_York')))
 async def daily_quest_loop():
     channel = bot.get_channel(config.QUEST_CHANNEL_ID)
