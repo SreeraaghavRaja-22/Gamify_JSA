@@ -1,12 +1,14 @@
 import re 
 import gspread 
 import random
+import math
 import config
 from datetime import datetime
 
 
 # --- HEADER CONFIGURATION ---
 MASTER_HEADERS = ['Name', 'Email', 'Year', 'Discord_ID', 'Total_XP', 'Rank']
+AUDIT_HEADERS = ['Message_ID','Timestamp','Officer_ID','Recipient_ID','XP_Amount','Reason']
 
 def calculate_rank(xp):
     # Calculates the rank name based on XP thresholds.
@@ -105,6 +107,24 @@ def is_quest_processed(audit_sheet, message_id):
         return str(message_id) in processed_ids
     except:
         return False
+def is_manual_xp_given(audit_sheet,recipient_id, xp,reason,timestamp):
+    try:
+        records = audit_sheet.get_all_records(expected_headers=AUDIT_HEADERS)
+        for i, row in enumerate(records):
+            table_recipient_id = str(row.get("Recipient_ID", 0))
+            table_xp = int(row.get("XP_Amount",0))
+            table_reason = str(row.get("Reason",""))
+            table_timestamp = str(row.get("Timestamp","0000-00-00"))[:10]
+            if(table_recipient_id  == recipient_id and table_xp == xp and table_reason == reason and table_timestamp == timestamp):
+                return True
+        return False
+
+
+    except:
+        return False
+
+
+
 
 def log_quest_approval(audit_sheet, message_id, officer_id, recipient_id, xp_amount, reason):
     # Logs the quest approval to Audit_Logs for transparency and tracking
@@ -289,54 +309,16 @@ def get_leaderboard(client, master_sheet_id, top=10, mode="regular"):
             continue
         if mode == "board" and not is_board:
             continue
+
         
         try:
             xp = int(xp_val)
         except:
             xp = 0
-        leaderboard_data.append((name, xp, rank_name))
+        leaderboard_data.append((name, xp, rank_name,is_board))
 
     leaderboard_data.sort(key=lambda x: x[1], reverse=True)
-
-    # Using Hangul Filler (\u3164) for alignment 
-    s = "\u3164" 
-
-    # Header
-    message = f"╭━━━ {s*2} ⚔️ **JSA LEADERBOARD** ⚔️ {s*2} ━━━╮\n\n"
-    
-    last_xp = None
-    shown = 0
-
-    for index, (name, xp, rank_name) in enumerate(leaderboard_data):
-        if xp != last_xp:
-            place = index + 1
-            last_xp = xp
-
-        medal = "🥇" if place == 1 else "🥈" if place == 2 else "🥉" if place == 3 else "⭐"
-        suffix = "st" if place == 1 else "nd" if place == 2 else "rd" if place == 3 else ")"
-        
-        if place <= 3:
-            message += f"{s*6} {medal} {place}{suffix} | {name}\n"
-            message += f"{s*8} ★ {xp} XP ★\n"
-            message += f"{s*8} {rank_name} (ง•̀o•́)ง \n\n"
-        else:
-            message += f"{s*4} {medal} {place}) {name} ★ {xp} XP ★\n"
-        
-        shown += 1
-
-        # WARNING: If too many people have the same XP, the message will break 2000 characters.
-        if shown >= top:
-            if index + 1 < len(leaderboard_data) and leaderboard_data[index + 1][1] == xp:
-                # Limits to 20 people to prevent the message from failing 
-                if shown > 20: 
-                    message += f"{s*3} ... and more tied with {xp} XP ...\n"
-                    break
-                continue
-            break
-
-    message += f"\n╰━━━━━━ {s*6} 🏯 {s*6} ━━━━━━╯"
-
-    return message
+    return leaderboard_data
 
 def get_xp(client, master_sheet_id, discord_id):
     discord_id = str(discord_id).strip()
@@ -457,11 +439,23 @@ def get_random_quest(client, master_sheet_id, sheet_name):
             indexed_records.append({"data": r, "row_num": i + 2})
 
         indexed_records.sort(key=lambda x: str(x["data"].get("Last_Used", "")), reverse=True)
-
-        # Exclude the most recently used quest if there is more than one
-        pool = indexed_records[1:] if len(indexed_records) > 1 else indexed_records
-        selection = random.choice(pool)
-
+        quest_cooldown = config.DAILY_QUEST_COOLDOWN
+        if(sheet_name == "Weekly_Quests"):
+            quest_cooldown = config.WEEKLY_QUEST_COOLDOWN
+        # Exclude the last 7(daily quest cooldown) recently used quests
+        pool = indexed_records[quest_cooldown:] if len(indexed_records) > 1 else indexed_records
+        #here we're going to create weights, the formula we use is going to be ln(i+1)^2
+        #this is so that quests that haven't shown up in a long time have a drastically higher chance of showing up
+        #basically the higher the distribution constant is, the less skewed the weights
+        distributionConstant = 7
+        weights = []
+        for i in range(len(pool)):
+            weights.append(math.log(i+distributionConstant)**2)
+        summedweights = sum(weights)
+        #here we normalize the weights so it's easy to understand but this could be removed
+        for i in range(len(pool)):
+            weights[i] = (weights[i]/summedweights)
+        selection = random.choices(pool,weights=weights,k=1)[0]
         # Update the timestamp in the sheet
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         worksheet.update_cell(selection["row_num"], last_used_col_idx, now_str)
@@ -519,6 +513,45 @@ def log_wordle_claim(client, master_sheet_id, puzzle, discord_id):
     # logs the wordle claim 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     wordle_sheet.append_row([str(puzzle), str(discord_id), timestamp], value_input_option = "RAW")
+#logs manual xp to audit log
+def grant_manual_xp(client,master_sheet_id,recipient_id,xp_amount,reason,officer_id):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        sheet = client.open_by_key(master_sheet_id)
+
+        master = sheet.worksheet("Master_Roster")
+        records = master.get_all_records(expected_headers=MASTER_HEADERS)
+        try:
+            audit_sheet = sheet.worksheet("Audit_Logs")
+
+            if not(is_manual_xp_given(audit_sheet,recipient_id,xp_amount,reason,timestamp[:10])):
+                log_quest_approval(audit_sheet,-1,officer_id,recipient_id,xp_amount,reason)
+            else:
+                return f"⚠️ Already Approved: XP has already been granted to this user for {reason}."
+        except Exception as e:
+            print(f"Warning: Could not access Audit_logs: {e}")
+            audit_sheet = None
+
+    except Exception as e:
+        return f"❌ Error accessing Sheet: {e}"
+    for i, row in enumerate(records):
+
+        if str(row.get("Discord_ID","")).strip() == str(recipient_id):
+            row_num = i+2
+            try:
+                current_xp = int(row.get("Total_XP",0))
+            except:
+                current_xp = 0
+
+            new_xp = current_xp + xp_amount
+            new_rank = calculate_rank(new_xp)
+
+            master.update_cell(row_num,5,new_xp)
+            master.update_cell(row_num,6,new_rank)
+            return f"Added {xp_amount} XP to <@{recipient_id}> for {reason}."
+
+
 
 # compares the two sheets and checks if the member is a board member, if so, add y/n to board member column
 def check_if_board_member(client, master_sheet_id):

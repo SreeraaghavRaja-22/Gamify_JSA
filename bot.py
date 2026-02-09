@@ -75,7 +75,8 @@ async def join(interaction: discord.Interaction, email: str):
 @app_commands.describe(type="Choose between Regular or Board members")
 @app_commands.choices(type=[
     app_commands.Choice(name="Regular Members", value="regular"),
-    app_commands.Choice(name="Board Members", value="board")
+    app_commands.Choice(name="Board Members", value="board"),
+    app_commands.Choice(name="All Members", value = "all")
 ])
 async def leaderboard(interaction: discord.Interaction, type: str = "regular", top: int = 10):
     await interaction.response.defer()
@@ -83,8 +84,71 @@ async def leaderboard(interaction: discord.Interaction, type: str = "regular", t
     client = get_client()
 
     result = actions.get_leaderboard(client, config.SHEET_ID, top, mode=type)
+    place = 0
+    shown = 0
+    leaderboardentries = ""
+    lastxp = -1
+    s = "\u3164"
+    def makeentry(name,xp,rank_name,isboard,place,type):
+        placement_text = ""
+        nametext = name
+        if(type == "all" and isboard == True):
+            nametext = "**[Board]** " + nametext
+        #placement_text += f"{name} — {xp} ({rank_name})\n"
+        medal = "🥇" if place == 1 else "🥈" if place == 2 else "🥉" if place == 3 else "⭐"
+        suffix = "st" if place == 1 else "nd" if place == 2 else "rd" if place == 3 else ")"
 
-    await interaction.followup.send(result)
+        if place <= 3:
+            placement_text += f"{s*6} {medal} {place}{suffix} | {nametext}\n"
+            placement_text += f"{s*8} ★ {xp} XP ★\n"
+            placement_text += f"{s*6} {rank_name} (ง•̀o•́)ง \n\n"
+        else:
+            placement_text += f"{s*2} {medal} {place}) {nametext} ★ {xp} XP ★\n"
+        return placement_text
+    def checkNextIndexes(currentxp, currentstring, currentindex,maxindex,place):
+            recursiveentry = result[currentindex]
+            recursivename = recursiveentry[0]
+            recursivexp = recursiveentry[1]
+            recursiverank = recursiveentry[2]
+            recursiveboard = recursiveentry[3]
+            newstring = makeentry(recursivename,recursivexp,recursiverank,recursiveboard,place,type)
+
+            #96 free characters to not hit the limit might be excessive but needing 4000 characters in the first place is excessive
+            if(len(currentstring+newstring)>4000):
+                recursivenextentry = result[currentindex+1]
+                recursivenextxp = recursivenextentry[1]
+                if(recursivenextxp == recursivexp):
+                    return f"\n{s*3} ... and more tied with {xp} XP ...\n"
+                else:
+                    return ""
+            if(currentindex == maxindex):
+                return newstring
+            if(currentxp != recursivexp):
+                return ""
+            return newstring + checkNextIndexes(recursivexp,currentstring+newstring,currentindex+1,maxindex,place)
+    for index, (name, xp, rank_name,is_board) in enumerate(result):
+        if xp != lastxp:
+            place = index + 1
+            lastxp = xp
+        entry = result[index]
+        name = entry[0]
+        xp = entry[1]
+        rank = entry[2]
+        isboard = entry[3]
+
+        thismessage = makeentry(name,xp,rank,isboard,place,type)
+        #this is an immediate check to see if we've somehow already hit that limit without going into tie strings which might somehow potentially be a problem later on if someone searches for like top 100
+        if(len(leaderboardentries+thismessage)>4000):
+            break
+        #this is the recursive check to see how many we can do next after we've already hit a huge string of ties
+        if shown >= top:
+            leaderboardentries += checkNextIndexes(xp,leaderboardentries+thismessage,index-1,len(result),place)
+            break
+        leaderboardentries += thismessage
+        shown +=1
+    leaderboardentries += f"\n**╰━━━━━━ {s*7} 🏯 {s*7} ━━━━━━╯**"
+    leaderboard_embed = discord.Embed(title=f"╭━━━ {s*2} ⚔️ **JSA LEADERBOARD** ⚔️ {s*2} ━━━╮\n\n",description=leaderboardentries)
+    await interaction.followup.send(embed=leaderboard_embed)
 
 # XP
 @bot.tree.command(name="xp", description="Prints out your total XP!", guild=GUILD_ID)
@@ -408,8 +472,14 @@ async def claim_wordle(interaction: discord.Interaction, share_text: str):
         except:
             pass
         raise 
-    
 
+@bot.tree.command(name = "award_xp", description = "Manually grant xp to a user.",guild=GUILD_ID)
+@app_commands.checks.has_role(config.OFFICER_ROLE_ID)
+async def award_xp(interaction: discord.Interaction, user_mention: str, xp_amount: int, reason: str):
+    #print(user_id[2:-1])
+    client = get_client()
+    result = actions.grant_manual_xp(client,config.SHEET_ID,user_mention[2:-1],xp_amount,reason.title(),interaction.user.id)
+    await interaction.response.send_message(result)
 # command to add whether certain members are board members 
 @bot.tree.command(name="sync_board_members", description = "Sync the board member bool on master roster", guild=GUILD_ID)
 @app_commands.checks.has_role(config.OFFICER_ROLE_ID)
