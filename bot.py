@@ -23,7 +23,8 @@ class Client(commands.Bot):
         if not daily_quest_loop.is_running():
             daily_quest_loop.start()
             print("Daily quest loop started.")
-
+        if not update_master_cache.is_running():
+            update_master_cache.start()
         try:
             # Syncing commands to the specific guild for instant updates
             guild = discord.Object(id=config.GUILD_ID) 
@@ -34,7 +35,7 @@ class Client(commands.Bot):
 
 bot = Client(command_prefix="!", intents=intents)
 GUILD_ID = discord.Object(id = config.GUILD_ID)
-
+#master_cache =
 # 3. Commands:
 
 # Processing Events
@@ -191,7 +192,11 @@ async def daily_quest_loop():
             quest = actions.get_random_quest(client, config.SHEET_ID, "Weekly_Quests")
             if quest:
                 await channel.send("🔥 **A new Weekly Quest has appeared!**", embed=format_quest_embed(quest, "Weekly_Quests"))
-
+#Task for updating master cache (Runs every 5 mins)
+@tasks.loop(minutes=5)
+async def update_master_cache():
+    client = get_client()
+    actions.update_master_cache(client,config.SHEET_ID)
 
 # The /test_quest command
 @bot.tree.command(name="test_quest", description="Test a quest announcement", guild=GUILD_ID)
