@@ -35,7 +35,6 @@ class Client(commands.Bot):
 
 bot = Client(command_prefix="!", intents=intents)
 GUILD_ID = discord.Object(id = config.GUILD_ID)
-#master_cache =
 # 3. Commands:
 
 # Processing Events
