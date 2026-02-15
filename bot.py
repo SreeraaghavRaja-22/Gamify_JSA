@@ -140,7 +140,7 @@ async def leaderboard(interaction: discord.Interaction, type: str = "regular", t
             break
         #this is the recursive check to see how many we can do next after we've already hit a huge string of ties
         if shown >= top:
-            leaderboardentries += checkNextIndexes(xp,leaderboardentries+thismessage,index-1,len(result),place)
+            leaderboardentries += checkNextIndexes(xp,leaderboardentries+thismessage,index,len(result),place)
             break
         leaderboardentries += thismessage
         shown +=1
