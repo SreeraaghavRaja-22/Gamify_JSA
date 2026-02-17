@@ -5,7 +5,7 @@ import math
 import config
 from datetime import datetime
 
-
+master_cache = [""]
 # --- HEADER CONFIGURATION ---
 MASTER_HEADERS = ['Name', 'Email', 'Year', 'Discord_ID', 'Total_XP', 'Rank']
 AUDIT_HEADERS = ['Message_ID','Timestamp','Officer_ID','Recipient_ID','XP_Amount','Reason']
@@ -144,7 +144,7 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
 
     # 1. Gets the Event ID
     event_id = get_id_from_url(event_sheet_url)
-    if not event_id: 
+    if not event_id:
         return "❌Error: Could not parse Sheet ID From that URL."
     
     # 2. Opens the Master Roster & Attendance Log
@@ -193,9 +193,11 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
                 current_xp = int(row.get("Total_XP", 0))
             except:
                 current_xp = 0
+            discord_id = str(row.get("Discord_ID",0))
             master_map[email] = {
                 'row_num': i + 2,  # Row number (1-indexed, row 1 is header)
-                'current_xp': current_xp
+                'current_xp': current_xp,
+                'discord_id': discord_id
             }
 
     # 7. Collect all updates for batch processing
@@ -220,14 +222,15 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
             member_info = master_map[attendee_email]
             row_num = member_info['row_num']
             current_xp = member_info['current_xp']
+            discord_id = member_info['discord_id']
             
             new_xp = current_xp + xp_amount
             new_rank = calculate_rank(new_xp)
 
-            # Add to batch update list (columns E and F are 5 and 6)
+            # Add to batch update list (column A is 1, F is 6)
             batch_updates.append({
-                'range': f'E{row_num}:F{row_num}',
-                'values': [[new_xp, new_rank]]
+                'range': f'A{row_num}:F{row_num}',
+                'values': [[attendee_name,attendee_email,attendee_year,discord_id,new_xp, new_rank]]
             })
             
             existing_members_count += 1
@@ -253,7 +256,6 @@ def process_event_data(client, master_sheet_id, event_sheet_url, xp_amount):
     log_event_completion(log_sheet, event_id, xp_amount)
 
     return f"✅  Success! Processed Sheet ID {event_id[:5]}... Updated {existing_members_count} and added {new_members_count}."
-
 def get_join(client, master_sheet_id, email, discord_id):
     sheet = client.open_by_key(master_sheet_id)
     master = sheet.worksheet("Master_Roster")
@@ -294,8 +296,9 @@ def get_join(client, master_sheet_id, email, discord_id):
 
 def get_leaderboard(client, master_sheet_id, top=10, mode="regular"):
     sheet = client.open_by_key(master_sheet_id)
-    master = sheet.worksheet("Master_Roster")
-    records = master.get_all_records()
+    #master = sheet.worksheet("Master_Roster")
+    #records = master_cache.get_all_records()
+    records = master_cache
 
     leaderboard_data = []
     for row in records:
@@ -323,9 +326,9 @@ def get_leaderboard(client, master_sheet_id, top=10, mode="regular"):
 def get_xp(client, master_sheet_id, discord_id):
     discord_id = str(discord_id).strip()
     sheet = client.open_by_key(master_sheet_id)
-    master = sheet.worksheet("Master_Roster")
-
-    records = master.get_all_records()
+    #master = sheet.worksheet("Master_Roster")
+    #records = master_cache.get_all_records()
+    records = master_cache
     for row in records:
         row_discord_id = str(row.get("Discord_ID", "")).strip()
         if row_discord_id == discord_id:
@@ -365,6 +368,14 @@ def get_xp(client, master_sheet_id, discord_id):
                 )
         
     return "Your Discord account was not found in JSA's XP system.\nPlease register using the join command (Ex: !join email@ufl.edu)."
+def update_master_cache(client,master_sheet_id):
+    try:
+        sheet = client.open_by_key(master_sheet_id)
+        global master_cache
+        temp_cache = sheet.worksheet("Master_Roster")
+        master_cache = temp_cache.get_all_records(expected_headers=MASTER_HEADERS)
+    except Exception as e:
+        return f"Error accessing sheet {e}"
 
 def award_quest_xp(client, master_sheet_id, discord_id, xp_amount, officer_id=None, message_id=None, reason=None):
     # Finds a user by Discord ID and adds XP to Master Roster
@@ -373,7 +384,8 @@ def award_quest_xp(client, master_sheet_id, discord_id, xp_amount, officer_id=No
         sheet = client.open_by_key(master_sheet_id)
         master = sheet.worksheet("Master_Roster")
         records = master.get_all_records(expected_headers=MASTER_HEADERS)
-        
+        global master_cache
+        master_cache = records
         # If message_id is provided, check for duplicate approval (prevents double-dipping)
         if message_id is not None:
             try:
@@ -413,7 +425,7 @@ def award_quest_xp(client, master_sheet_id, discord_id, xp_amount, officer_id=No
                 log_quest_approval(audit_sheet, message_id, officer_id, discord_id, xp_amount, reason or "Manual XP Award")
 
             return f"Added {xp_amount} XP! New Total: {new_xp} ({new_rank})"
-            
+
     return "❌ User not found in roster. Please use !join first."
 
 def get_random_quest(client, master_sheet_id, sheet_name):
@@ -522,6 +534,8 @@ def grant_manual_xp(client,master_sheet_id,recipient_id,xp_amount,reason,officer
 
         master = sheet.worksheet("Master_Roster")
         records = master.get_all_records(expected_headers=MASTER_HEADERS)
+        global master_cache
+        master_cache = records
         try:
             audit_sheet = sheet.worksheet("Audit_Logs")
 
