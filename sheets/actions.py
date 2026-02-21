@@ -462,12 +462,17 @@ def get_random_quest(client, master_sheet_id, sheet_name):
         distributionConstant = 7
         weights = []
         for i in range(len(pool)):
-            weights.append(math.log(i+distributionConstant)**2)
+            weight = math.log(i+distributionConstant)**2
+            #If the weight was in the last 25(dailies)/7(weeklies) the chance of pulling it is cut into thirds
+            if(i<(len(pool)/2)):
+                weight /= 4
+            weights.append(weight)
         summedweights = sum(weights)
-        #here we normalize the weights so it's easy to understand but this could be removed
+        #here we normalize the weights so it's easy to understand for testing but this could be removed
         for i in range(len(pool)):
             weights[i] = (weights[i]/summedweights)
-        selection = random.choices(pool,weights=weights,k=1)[0]
+        selection = random.choices(range(len(pool)),weights=weights,k=1)[0]
+        selection = (pool[selection])
         # Update the timestamp in the sheet
         now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         worksheet.update_cell(selection["row_num"], last_used_col_idx, now_str)
